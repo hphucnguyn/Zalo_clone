@@ -9,6 +9,7 @@ import java.sql.Statement;
 import java.util.Objects;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalLong;
 import com.example.zalo.common.model.MessageDto;
 
 /** JDBC persistence for text messages. */
@@ -74,6 +75,20 @@ public class MessageRepository {
             }
         } catch (SQLException exception) {
             throw new IllegalStateException("Could not load message history", exception);
+        }
+    }
+
+    public OptionalLong findSenderId(long messageId, long conversationId) {
+        String sql = "SELECT sender_id FROM messages WHERE id = ? AND conversation_id = ?";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, messageId);
+            statement.setLong(2, conversationId);
+            try (ResultSet result = statement.executeQuery()) {
+                return result.next() ? OptionalLong.of(result.getLong(1)) : OptionalLong.empty();
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Could not load message sender", exception);
         }
     }
 }

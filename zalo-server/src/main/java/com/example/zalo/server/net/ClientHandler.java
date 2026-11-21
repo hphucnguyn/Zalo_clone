@@ -20,6 +20,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /** Performs TLS handshake, reads newline-delimited packets, and always releases its session. */
 public final class ClientHandler implements Runnable {
@@ -32,6 +33,7 @@ public final class ClientHandler implements Runnable {
     private final PacketWriter packetWriter;
     private final int maxLineBytes;
     private final Charset charset;
+    private final Consumer<ClientSession> disconnectConsumer;
 
     public ClientHandler(
             SSLSocket socket,
@@ -40,12 +42,24 @@ public final class ClientHandler implements Runnable {
             PacketWriter packetWriter,
             int maxLineBytes,
             Charset charset) {
+        this(socket, sessionRegistry, dispatcher, packetWriter, maxLineBytes, charset, ignored -> { });
+    }
+
+    public ClientHandler(
+            SSLSocket socket,
+            SessionRegistry sessionRegistry,
+            PacketDispatcher dispatcher,
+            PacketWriter packetWriter,
+            int maxLineBytes,
+            Charset charset,
+            Consumer<ClientSession> disconnectConsumer) {
         this.socket = Objects.requireNonNull(socket, "socket must not be null");
         this.sessionRegistry = Objects.requireNonNull(sessionRegistry, "sessionRegistry must not be null");
         this.dispatcher = Objects.requireNonNull(dispatcher, "dispatcher must not be null");
         this.packetWriter = Objects.requireNonNull(packetWriter, "packetWriter must not be null");
         this.maxLineBytes = maxLineBytes;
         this.charset = Objects.requireNonNull(charset, "charset must not be null");
+        this.disconnectConsumer = Objects.requireNonNull(disconnectConsumer, "disconnectConsumer must not be null");
     }
 
     @Override
@@ -67,6 +81,9 @@ public final class ClientHandler implements Runnable {
         } finally {
             if (session != null) {
                 sessionRegistry.unregister(session);
+                if (session.authenticatedUser() != null) {
+                    disconnectConsumer.accept(session);
+                }
             } else {
                 closeSocket();
             }

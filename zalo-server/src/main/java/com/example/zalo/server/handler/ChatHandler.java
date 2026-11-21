@@ -37,6 +37,11 @@ public final class ChatHandler implements PacketHandler {
                 for (ClientSession recipient : sessionRegistry.findByUserId(userId)) {
                     try {
                         packetWriter.write(recipient, delivered);
+                        if (recipient.authenticatedUser().id() != saved.message().senderId()) {
+                            ReceiptNotifier.notifySender(messageService.markDelivered(
+                                    saved.message().id(), saved.message().conversationId(), recipient.authenticatedUser().id()),
+                                    sessionRegistry, packetWriter);
+                        }
                     } catch (IOException ignored) {
                         sessionRegistry.unregister(recipient);
                     }

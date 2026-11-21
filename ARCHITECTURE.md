@@ -67,7 +67,7 @@ Gốc package: `com.example.zalo`.
 | Image | 1,25 | Upload như file, client hiển thị ảnh thu nhỏ | `ImageMessageCell` |
 | Video | 1,25 | Upload như file, client phát bằng `MediaPlayer` | `MediaMessageCell` |
 | Sound | 1,25 | Upload file âm thanh, client phát bằng `MediaPlayer` | `MediaMessageCell` |
-| State | 2,5 | Presence ONLINE/OFFLINE + trạng thái tin SENT/DELIVERED/SEEN | `PresenceService`, `message_receipts` |
+| State | 2,5 | Presence ONLINE/OFFLINE + trạng thái tin SENT/DELIVERED/SEEN | `PresenceService`, `ReceiptRepository`, `ReceiptNotifier`, `MarkSeenHandler` (server); `ChatClient` xử lý `presence`/`message_status`, `MessageCell` hiển thị ✓/✓✓ màu xanh khi SEEN |
 | Time | 2,5 | Server gán `sentAt` (epoch millis), client định dạng `HH:mm` và nhóm theo ngày | `TimeUtil` |
 | Sender | 1,25 | Mỗi tin có `senderId`, `senderName`, avatar | `MessageDto` |
 

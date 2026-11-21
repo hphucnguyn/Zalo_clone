@@ -13,13 +13,14 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 
 import java.io.IOException;
+import com.example.zalo.common.model.UserDto;
 
 /** Controls the active conversation section of the main screen. */
 public final class ChatController {
 
     private final ChatClient chatClient;
     private final ObservableList<MessageDto> visibleMessages = FXCollections.observableArrayList();
-    private ConversationDto activeConversation;
+    private volatile ConversationDto activeConversation;
     private ListView<MessageDto> messagesView;
     private TextField messageField;
     private Button sendButton;
@@ -27,8 +28,11 @@ public final class ChatController {
     private Label conversationLabel;
     private Label statusLabel;
 
-    public ChatController(ChatClient chatClient) {
+    private final UserDto currentUser;
+
+    public ChatController(ChatClient chatClient, UserDto currentUser) {
         this.chatClient = chatClient;
+        this.currentUser = currentUser;
     }
 
     public void bind(
@@ -45,10 +49,11 @@ public final class ChatController {
         this.conversationLabel = conversationLabel;
         this.statusLabel = statusLabel;
         messagesView.setItems(visibleMessages);
-        messagesView.setCellFactory(ignored -> new MessageCell());
+        messagesView.setCellFactory(ignored -> new MessageCell(chatClient::status, currentUser.id()));
         sendButton.setDisable(true);
         loadOlderButton.setDisable(true);
         chatClient.addMessageConsumer(this::receiveMessage);
+        chatClient.addStatusConsumer(ignored -> UiThread.run(messagesView::refresh));
     }
 
     public void showConversation(ConversationDto conversation) {
@@ -75,6 +80,7 @@ public final class ChatController {
             }));
         }));
         messageField.requestFocus();
+        chatClient.messages(conversation.id()).forEach(chatClient::markSeen);
     }
 
     public void loadOlder() {
@@ -110,8 +116,13 @@ public final class ChatController {
             UiThread.run(() -> {
                 visibleMessages.add(message);
                 messagesView.scrollTo(message);
+                chatClient.markSeen(message);
             });
         }
+    }
+
+    public ConversationDto activeConversation() {
+        return activeConversation;
     }
 
     private boolean isActive(ConversationDto conversation) {

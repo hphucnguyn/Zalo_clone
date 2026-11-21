@@ -4,6 +4,8 @@ import com.example.zalo.client.net.TcpClient;
 import com.example.zalo.client.cache.MessageCache;
 import com.example.zalo.common.model.ConversationDto;
 import com.example.zalo.common.model.MessageDto;
+import com.example.zalo.common.model.MessageStatus;
+import com.example.zalo.common.model.UserDto;
 import com.example.zalo.common.protocol.MessageType;
 import com.example.zalo.common.protocol.Packet;
 import com.example.zalo.common.util.JsonUtil;
@@ -27,7 +29,12 @@ public final class ChatClient {
     private final ConcurrentMap<String, CompletableFuture<HistoryPage>> pendingHistory = new ConcurrentHashMap<>();
     private final ConcurrentMap<Long, CopyOnWriteArrayList<MessageDto>> messagesByConversation = new ConcurrentHashMap<>();
     private final CopyOnWriteArrayList<Consumer<MessageDto>> messageConsumers = new CopyOnWriteArrayList<>();
+    private final ConcurrentMap<Long, MessageStatus> statusesByMessage = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Long, Boolean> presenceByUser = new ConcurrentHashMap<>();
+    private final CopyOnWriteArrayList<Consumer<Long>> statusConsumers = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<Consumer<Long>> presenceConsumers = new CopyOnWriteArrayList<>();
     private volatile MessageCache messageCache;
+    private volatile UserDto currentUser;
 
     public ChatClient(TcpClient tcpClient) {
         this.tcpClient = tcpClient;
@@ -107,6 +114,39 @@ public final class ChatClient {
         this.messageCache = cache;
     }
 
+    public void setCurrentUser(UserDto user) {
+        currentUser = user;
+    }
+
+    public MessageStatus status(long messageId) {
+        return statusesByMessage.getOrDefault(messageId, MessageStatus.SENT);
+    }
+
+    public boolean isOnline(long userId) {
+        return presenceByUser.getOrDefault(userId, false);
+    }
+
+    public void addStatusConsumer(Consumer<Long> consumer) {
+        statusConsumers.add(consumer);
+    }
+
+    public void addPresenceConsumer(Consumer<Long> consumer) {
+        presenceConsumers.add(consumer);
+    }
+
+    public void markSeen(MessageDto message) {
+        UserDto user = currentUser;
+        if (user == null || message.senderId() == user.id()) {
+            return;
+        }
+        try {
+            tcpClient.send(Packet.of(MessageType.MARK_SEEN, UUID.randomUUID().toString(), Map.of(
+                    "messageId", message.id(), "conversationId", message.conversationId())));
+        } catch (IOException ignored) {
+            // Offline clients cannot update receipts; the next open chat can retry.
+        }
+    }
+
     public List<MessageDto> messages(long conversationId) {
         return List.copyOf(messagesByConversation.getOrDefault(conversationId, new CopyOnWriteArrayList<>()));
     }
@@ -145,6 +185,28 @@ public final class ChatClient {
             if (mergeMessage(message)) {
                 saveToCache(List.of(message));
                 notifyMessageConsumers(message);
+            }
+            return;
+        }
+        if (packet.type() == MessageType.MESSAGE_STATUS) {
+            long messageId = packet.data().path("messageId").asLong(-1);
+            if (messageId > 0) {
+                MessageStatus status = MessageStatus.valueOf(packet.data().path("status").asText("SENT"));
+                statusesByMessage.merge(messageId, status,
+                        (previous, next) -> next.ordinal() > previous.ordinal() ? next : previous);
+                for (Consumer<Long> consumer : statusConsumers) {
+                    consumer.accept(messageId);
+                }
+            }
+            return;
+        }
+        if (packet.type() == MessageType.PRESENCE) {
+            long userId = packet.data().path("userId").asLong(-1);
+            if (userId > 0) {
+                presenceByUser.put(userId, packet.data().path("online").asBoolean(false));
+                for (Consumer<Long> consumer : presenceConsumers) {
+                    consumer.accept(userId);
+                }
             }
             return;
         }

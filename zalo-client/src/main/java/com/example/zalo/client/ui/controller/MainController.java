@@ -30,18 +30,20 @@ public final class MainController {
     @FXML private Button sendButton;
     @FXML private Button loadOlderButton;
     @FXML private Label offlineBanner;
+    @FXML private Label presenceLabel;
 
     public MainController(ChatClient chatClient, TcpClient tcpClient, UserDto currentUser) {
         this.chatClient = chatClient;
         this.tcpClient = tcpClient;
         this.currentUser = currentUser;
-        this.chatController = new ChatController(chatClient);
+        this.chatController = new ChatController(chatClient, currentUser);
     }
 
     @FXML
     private void initialize() {
         welcomeLabel.setText("Xin chào, " + currentUser.displayName());
         chatController.bind(messagesView, messageField, sendButton, loadOlderButton, conversationLabel, statusLabel);
+        chatClient.setCurrentUser(currentUser);
         offlineBanner.setManaged(false);
         offlineBanner.setVisible(false);
         tcpClient.addDisconnectConsumer(ignored -> UiThread.run(() -> {
@@ -49,6 +51,7 @@ public final class MainController {
             offlineBanner.setVisible(true);
             statusLabel.setText("Đang offline: vẫn có thể xem lịch sử đã lưu.");
         }));
+        chatClient.addPresenceConsumer(ignored -> UiThread.run(this::refreshPresence));
     }
 
     @FXML
@@ -82,6 +85,21 @@ public final class MainController {
 
     private void activateConversation(ConversationDto conversation) {
         chatController.showConversation(conversation);
+        refreshPresence();
         statusLabel.setText("Đã mở hội thoại 1-1.");
+    }
+
+    private void refreshPresence() {
+        ConversationDto active = chatController.activeConversation();
+        if (active == null || active.counterpart() == null) {
+            presenceLabel.setText("");
+            return;
+        }
+        long counterpartId = active.counterpart().id();
+        boolean online = chatClient.isOnline(counterpartId);
+        presenceLabel.setStyle(online ? "-fx-text-fill: #188038;" : "-fx-text-fill: #5f6368;");
+        presenceLabel.setText(online
+                ? "● Online"
+                : "○ Offline");
     }
 }

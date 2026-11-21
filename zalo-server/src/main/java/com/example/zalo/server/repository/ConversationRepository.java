@@ -71,6 +71,30 @@ public class ConversationRepository {
         }
     }
 
+    /** Returns users sharing at least one conversation with {@code userId}, excluding the user themselves. */
+    public long[] relatedUserIds(long userId) {
+        String sql = """
+                SELECT DISTINCT other_members.user_id
+                FROM conversation_members mine
+                JOIN conversation_members other_members ON other_members.conversation_id = mine.conversation_id
+                WHERE mine.user_id = ? AND other_members.user_id <> ?
+                """;
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, userId);
+            statement.setLong(2, userId);
+            try (ResultSet result = statement.executeQuery()) {
+                java.util.ArrayList<Long> ids = new java.util.ArrayList<>();
+                while (result.next()) {
+                    ids.add(result.getLong(1));
+                }
+                return ids.stream().mapToLong(Long::longValue).toArray();
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Could not load related users", exception);
+        }
+    }
+
     private static OptionalLong findDirect(Connection connection, long firstUserId, long secondUserId) throws SQLException {
         String sql = """
                 SELECT c.id

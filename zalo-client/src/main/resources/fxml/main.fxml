@@ -21,6 +21,7 @@
             <Label fx:id="statusLabel" />
             <Label fx:id="offlineBanner" style="-fx-background-color: #fff3cd; -fx-padding: 8px; -fx-text-fill: #664d03;" text="Đang offline — lịch sử cục bộ vẫn khả dụng." />
             <Label fx:id="conversationLabel" style="-fx-font-weight: bold;" text="Chưa chọn hội thoại" />
+            <Label fx:id="presenceLabel" style="-fx-text-fill: #5f6368;" text="" />
         </VBox>
     </top>
     <center>

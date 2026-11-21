@@ -5,6 +5,8 @@ import com.example.zalo.common.model.UserDto;
 import com.example.zalo.common.util.TimeUtil;
 import com.example.zalo.server.repository.ConversationRepository;
 import com.example.zalo.server.repository.MessageRepository;
+import com.example.zalo.server.repository.ReceiptRepository;
+import com.example.zalo.common.model.MessageStatus;
 
 import java.util.Objects;
 import java.util.List;
@@ -16,10 +18,12 @@ public final class MessageService {
 
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
+    private final ReceiptRepository receiptRepository;
 
-    public MessageService(ConversationRepository conversationRepository, MessageRepository messageRepository) {
+    public MessageService(ConversationRepository conversationRepository, MessageRepository messageRepository, ReceiptRepository receiptRepository) {
         this.conversationRepository = Objects.requireNonNull(conversationRepository, "conversationRepository must not be null");
         this.messageRepository = Objects.requireNonNull(messageRepository, "messageRepository must not be null");
+        this.receiptRepository = Objects.requireNonNull(receiptRepository, "receiptRepository must not be null");
     }
 
     public SavedMessage sendText(UserDto sender, long conversationId, String contentInput) {
@@ -30,8 +34,29 @@ public final class MessageService {
         long sentAt = TimeUtil.nowEpochMillis();
         long messageId = messageRepository.insertText(conversationId, sender.id(), content, sentAt);
         long[] recipients = conversationRepository.memberIds(conversationId);
+        receiptRepository.createSentReceipts(messageId, sender.id(), recipients);
         MessageDto message = new MessageDto(messageId, conversationId, sender.id(), sender.displayName(), content, sentAt);
         return new SavedMessage(message, recipients);
+    }
+
+    public ReceiptUpdate markDelivered(long messageId, long conversationId, long recipientId) {
+        long senderId = messageRepository.findSenderId(messageId, conversationId)
+                .orElseThrow(() -> new IllegalArgumentException("Message not found"));
+        if (senderId == recipientId || !conversationRepository.isMember(conversationId, recipientId)) {
+            throw new UnauthorizedConversationException();
+        }
+        receiptRepository.markDelivered(messageId, recipientId, TimeUtil.nowEpochMillis());
+        return new ReceiptUpdate(messageId, conversationId, senderId, recipientId, MessageStatus.DELIVERED);
+    }
+
+    public ReceiptUpdate markSeen(long messageId, long conversationId, long recipientId) {
+        long senderId = messageRepository.findSenderId(messageId, conversationId)
+                .orElseThrow(() -> new IllegalArgumentException("Message not found"));
+        if (senderId == recipientId || !conversationRepository.isMember(conversationId, recipientId)) {
+            throw new UnauthorizedConversationException();
+        }
+        receiptRepository.markSeen(messageId, recipientId, TimeUtil.nowEpochMillis());
+        return new ReceiptUpdate(messageId, conversationId, senderId, recipientId, MessageStatus.SEEN);
     }
 
     public HistoryPage history(UserDto user, long conversationId, long beforeId, long afterId, int requestedLimit) {
@@ -66,6 +91,9 @@ public final class MessageService {
     }
 
     public record HistoryPage(List<MessageDto> messages, boolean hasMore) {
+    }
+
+    public record ReceiptUpdate(long messageId, long conversationId, long senderId, long recipientId, MessageStatus status) {
     }
 
     public static final class UnauthorizedConversationException extends RuntimeException {

@@ -9,9 +9,12 @@ import com.example.zalo.server.handler.RegisterHandler;
 import com.example.zalo.server.handler.ConversationHandler;
 import com.example.zalo.server.handler.ChatHandler;
 import com.example.zalo.server.handler.HistoryHandler;
+import com.example.zalo.server.handler.MarkSeenHandler;
 import com.example.zalo.server.service.AuthService;
 import com.example.zalo.server.service.ConversationService;
 import com.example.zalo.server.service.MessageService;
+import com.example.zalo.server.service.PresenceService;
+import com.example.zalo.server.repository.ConversationRepository;
 import com.example.zalo.server.session.SessionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,18 +57,31 @@ public final class ChatServer implements AutoCloseable {
             AuthService authService,
             ConversationService conversationService,
             MessageService messageService) {
+        this(config, sslContext, authService, conversationService, messageService, null);
+    }
+
+    public ChatServer(
+            ServerConfig config,
+            SSLContext sslContext,
+            AuthService authService,
+            ConversationService conversationService,
+            MessageService messageService,
+            ConversationRepository presenceConversationRepository) {
         this.config = Objects.requireNonNull(config, "config must not be null");
         this.sslContext = Objects.requireNonNull(sslContext, "sslContext must not be null");
         Objects.requireNonNull(authService, "authService must not be null");
+        PresenceService presenceService = presenceConversationRepository == null ? null
+                : new PresenceService(sessionRegistry, presenceConversationRepository, packetWriter);
         PacketDispatcher packetDispatcher = new PacketDispatcher(packetWriter)
                 .register(MessageType.REGISTER, new RegisterHandler(authService, packetWriter))
-                .register(MessageType.LOGIN, new LoginHandler(authService, packetWriter))
+                .register(MessageType.LOGIN, new LoginHandler(authService, packetWriter, presenceService))
                 .register(MessageType.PING, new PingHandler(packetWriter));
         if (conversationService != null && messageService != null) {
             packetDispatcher
                     .register(MessageType.OPEN_DIRECT, new ConversationHandler(conversationService, packetWriter))
                     .register(MessageType.SEND_MESSAGE, new ChatHandler(messageService, sessionRegistry, packetWriter))
-                    .register(MessageType.HISTORY_REQUEST, new HistoryHandler(messageService, packetWriter));
+                    .register(MessageType.HISTORY_REQUEST, new HistoryHandler(messageService, packetWriter))
+                    .register(MessageType.MARK_SEEN, new MarkSeenHandler(messageService, sessionRegistry, packetWriter));
         }
         this.dispatcher = packetDispatcher;
         this.clientExecutor = Executors.newFixedThreadPool(config.maxClients());
@@ -114,7 +130,12 @@ public final class ChatServer implements AutoCloseable {
                                 dispatcher,
                                 packetWriter,
                                 config.protocol().maxLineBytes(),
-                                config.protocol().charset()).run();
+                                config.protocol().charset(),
+                                session -> {
+                                    if (presenceService != null && sessionRegistry.findByUserId(session.authenticatedUser().id()).isEmpty()) {
+                                        presenceService.publish(session.authenticatedUser(), false);
+                                    }
+                                }).run();
                     } finally {
                         acceptedSockets.remove(socket);
                     }
