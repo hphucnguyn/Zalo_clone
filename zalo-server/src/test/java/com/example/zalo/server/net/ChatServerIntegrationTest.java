@@ -5,6 +5,10 @@ import com.example.zalo.common.protocol.Packet;
 import com.example.zalo.common.util.JsonUtil;
 import com.example.zalo.server.config.ServerConfig;
 import com.example.zalo.server.config.SslContextFactory;
+import com.example.zalo.server.repository.UserRepository;
+import com.example.zalo.server.security.LoginAttemptLimiter;
+import com.example.zalo.server.security.PasswordHasher;
+import com.example.zalo.server.service.AuthService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -30,6 +34,13 @@ import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+import javax.sql.DataSource;
+
+import static org.mockito.Mockito.mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -82,16 +93,67 @@ class ChatServerIntegrationTest {
     }
 
     @Test
-    void tlsClientReceivesPongForPing() throws Exception {
+    void registerThenLoginAuthenticatesSessionAndAllowsPing() throws Exception {
         startServer();
         try (SSLSocket socket = tlsSocket()) {
             socket.startHandshake();
+            write(socket, JsonUtil.toJson(Packet.of(MessageType.REGISTER, "register-1", Map.of(
+                    "username", "alice", "password", "correct-password", "displayName", "Alice"))));
+            Packet registration = JsonUtil.fromJson(read(socket));
+            assertEquals(MessageType.REGISTER_RESULT, registration.type());
+            assertEquals(true, registration.data().get("success").asBoolean());
+
+            write(socket, JsonUtil.toJson(Packet.of(MessageType.LOGIN, "login-1", Map.of(
+                    "username", "alice", "password", "correct-password"))));
+            Packet login = JsonUtil.fromJson(read(socket));
+            assertEquals(MessageType.LOGIN_RESULT, login.type());
+            assertEquals(true, login.data().get("success").asBoolean());
+
             write(socket, JsonUtil.toJson(Packet.of(MessageType.PING, "ping-1", Map.of())));
 
             Packet response = JsonUtil.fromJson(read(socket));
 
             assertEquals(MessageType.PONG, response.type());
             assertEquals("ping-1", response.requestId());
+        }
+    }
+
+    @Test
+    void wrongPasswordReturnsGenericLoginFailureAndLocksAfterFiveAttempts() throws Exception {
+        startServer();
+        try (SSLSocket socket = tlsSocket()) {
+            socket.startHandshake();
+            write(socket, JsonUtil.toJson(Packet.of(MessageType.REGISTER, "register-1", Map.of(
+                    "username", "bob", "password", "correct-password", "displayName", "Bob"))));
+            read(socket);
+
+            for (int attempt = 1; attempt <= 5; attempt++) {
+                write(socket, JsonUtil.toJson(Packet.of(MessageType.LOGIN, "login-" + attempt, Map.of(
+                        "username", "bob", "password", "incorrect-password"))));
+                Packet response = JsonUtil.fromJson(read(socket));
+                assertEquals(MessageType.LOGIN_RESULT, response.type());
+                assertEquals(false, response.data().get("success").asBoolean());
+                String message = response.data().get("message").asText();
+                if (attempt < 5) {
+                    assertEquals("Tên đăng nhập hoặc mật khẩu không đúng.", message);
+                } else {
+                    assertEquals("Tài khoản tạm thời bị khóa. Vui lòng thử lại sau.", message);
+                }
+            }
+        }
+    }
+
+    @Test
+    void unauthenticatedMessagePacketReceivesNotAuthenticatedError() throws Exception {
+        startServer();
+        try (SSLSocket socket = tlsSocket()) {
+            socket.startHandshake();
+            write(socket, JsonUtil.toJson(Packet.of(MessageType.SEND_MESSAGE, "message-1", Map.of("content", "secret"))));
+
+            Packet response = JsonUtil.fromJson(read(socket));
+
+            assertEquals(MessageType.ERROR, response.type());
+            assertEquals("NOT_AUTHENTICATED", response.data().get("code").asText());
         }
     }
 
@@ -144,9 +206,13 @@ class ChatServerIntegrationTest {
                 Duration.ofSeconds(3),
                 new ServerConfig.TlsConfig(keystore, "PKCS12", KEYSTORE_PASSWORD, new String[]{"TLSv1.3", "TLSv1.2"}, false),
                 new ServerConfig.ProtocolConfig(65_536, StandardCharsets.UTF_8, 32_768),
+                new ServerConfig.AuthConfig(4, 5, Duration.ofSeconds(60)),
                 new ServerConfig.DatabaseConfig("jdbc:unused", "unused", "unused", "schema.sql", 1, 0,
                         Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1)));
-        server = new ChatServer(config, SslContextFactory.create(config.tls()));
+        server = new ChatServer(config, SslContextFactory.create(config.tls()), new AuthService(
+                new InMemoryUserRepository(),
+                new PasswordHasher(config.auth().bcryptRounds()),
+                new LoginAttemptLimiter(config.auth().maxLoginAttempts(), config.auth().lockDuration())));
         server.start();
     }
 
@@ -199,5 +265,28 @@ class ChatServerIntegrationTest {
     @FunctionalInterface
     private interface Condition {
         boolean matches();
+    }
+
+    private static final class InMemoryUserRepository extends UserRepository {
+        private final Map<String, UserAccount> users = new ConcurrentHashMap<>();
+        private final AtomicLong ids = new AtomicLong();
+
+        private InMemoryUserRepository() {
+            super(mock(DataSource.class));
+        }
+
+        @Override
+        public Optional<UserAccount> findByUsername(String username) {
+            return Optional.ofNullable(users.get(username));
+        }
+
+        @Override
+        public UserAccount create(String username, String passwordHash, String displayName, long createdAt) {
+            UserAccount account = new UserAccount(ids.incrementAndGet(), username, passwordHash, displayName, null);
+            if (users.putIfAbsent(username, account) != null) {
+                throw new UsernameAlreadyExistsException();
+            }
+            return account;
+        }
     }
 }

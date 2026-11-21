@@ -4,6 +4,10 @@ import com.example.zalo.server.config.Database;
 import com.example.zalo.server.config.ServerConfig;
 import com.example.zalo.server.config.SslContextFactory;
 import com.example.zalo.server.net.ChatServer;
+import com.example.zalo.server.repository.UserRepository;
+import com.example.zalo.server.security.LoginAttemptLimiter;
+import com.example.zalo.server.security.PasswordHasher;
+import com.example.zalo.server.service.AuthService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,8 +22,14 @@ public final class ServerMain {
     public static void main(String[] args) {
         try {
             ServerConfig config = ServerConfig.load();
-            try (Database ignored = Database.connect(config);
-                 ChatServer chatServer = new ChatServer(config, SslContextFactory.create(config.tls()))) {
+            try (Database database = Database.connect(config);
+                 ChatServer chatServer = new ChatServer(
+                         config,
+                         SslContextFactory.create(config.tls()),
+                         new AuthService(
+                                 new UserRepository(database.dataSource()),
+                                 new PasswordHasher(config.auth().bcryptRounds()),
+                                 new LoginAttemptLimiter(config.auth().maxLoginAttempts(), config.auth().lockDuration())))) {
                 LOGGER.info("DB connected, schema ready");
                 LOGGER.info("TLS context loaded");
                 chatServer.start();

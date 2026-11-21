@@ -18,6 +18,7 @@ public record ServerConfig(
         Duration readTimeout,
         TlsConfig tls,
         ProtocolConfig protocol,
+        AuthConfig auth,
         DatabaseConfig database) {
 
     private static final String RESOURCE_NAME = "server.properties";
@@ -59,6 +60,10 @@ public record ServerConfig(
                         positiveInt(properties, "protocol.maxLineBytes"),
                         Charset.forName(required(properties, "protocol.charset")),
                         positiveInt(properties, "protocol.fileChunkBytes")),
+                new AuthConfig(
+                        positiveInt(properties, "auth.bcrypt.rounds"),
+                        positiveInt(properties, "auth.maxLoginAttempts"),
+                        Duration.ofSeconds(positiveInt(properties, "auth.lockSeconds"))),
                 new DatabaseConfig(
                         required(properties, "db.url"),
                         requiredEnvironment(environment, databaseUserEnv),
@@ -120,6 +125,9 @@ public record ServerConfig(
     }
 
     public record ProtocolConfig(int maxLineBytes, Charset charset, int fileChunkBytes) {
+    }
+
+    public record AuthConfig(int bcryptRounds, int maxLoginAttempts, Duration lockDuration) {
     }
 
     public record DatabaseConfig(

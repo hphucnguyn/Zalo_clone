@@ -4,6 +4,9 @@ import com.example.zalo.common.protocol.MessageType;
 import com.example.zalo.server.config.ServerConfig;
 import com.example.zalo.server.handler.PacketDispatcher;
 import com.example.zalo.server.handler.PingHandler;
+import com.example.zalo.server.handler.LoginHandler;
+import com.example.zalo.server.handler.RegisterHandler;
+import com.example.zalo.server.service.AuthService;
 import com.example.zalo.server.session.SessionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** TLS accept loop. Authentication and chat handlers are introduced in later steps. */
+/** TLS accept loop and authentication packet routing. */
 public final class ChatServer implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ChatServer.class);
@@ -27,16 +30,20 @@ public final class ChatServer implements AutoCloseable {
     private final SSLContext sslContext;
     private final SessionRegistry sessionRegistry = new SessionRegistry();
     private final PacketWriter packetWriter = new PacketWriter();
-    private final PacketDispatcher dispatcher = new PacketDispatcher(packetWriter)
-            .register(MessageType.PING, new PingHandler(packetWriter));
+    private final PacketDispatcher dispatcher;
     private final ExecutorService clientExecutor;
     private final ExecutorService acceptExecutor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean();
     private volatile SSLServerSocket serverSocket;
 
-    public ChatServer(ServerConfig config, SSLContext sslContext) {
+    public ChatServer(ServerConfig config, SSLContext sslContext, AuthService authService) {
         this.config = Objects.requireNonNull(config, "config must not be null");
         this.sslContext = Objects.requireNonNull(sslContext, "sslContext must not be null");
+        Objects.requireNonNull(authService, "authService must not be null");
+        this.dispatcher = new PacketDispatcher(packetWriter)
+                .register(MessageType.REGISTER, new RegisterHandler(authService, packetWriter))
+                .register(MessageType.LOGIN, new LoginHandler(authService, packetWriter))
+                .register(MessageType.PING, new PingHandler(packetWriter));
         this.clientExecutor = Executors.newFixedThreadPool(config.maxClients());
     }
 

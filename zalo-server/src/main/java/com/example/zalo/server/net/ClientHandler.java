@@ -97,6 +97,13 @@ public final class ClientHandler implements Runnable {
             if (packet.type() == MessageType.DISCONNECT) {
                 return;
             }
+            if (session.state() != ClientState.AUTHENTICATED
+                    && packet.type() != MessageType.REGISTER
+                    && packet.type() != MessageType.LOGIN) {
+                dispatcher.sendError(session, packet.requestId(), ErrorCode.NOT_AUTHENTICATED,
+                        "Authentication is required");
+                continue;
+            }
             dispatcher.dispatch(session, packet);
         }
     }

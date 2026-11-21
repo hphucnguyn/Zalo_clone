@@ -1,5 +1,6 @@
 package com.example.zalo.server.session;
 
+import com.example.zalo.common.model.UserDto;
 import javax.net.ssl.SSLSocket;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -18,6 +19,7 @@ public final class ClientSession implements AutoCloseable {
     private final BufferedWriter writer;
     private final ReentrantLock sendLock = new ReentrantLock();
     private final AtomicReference<ClientState> state = new AtomicReference<>(ClientState.TCP_CONNECTED);
+    private final AtomicReference<UserDto> authenticatedUser = new AtomicReference<>();
 
     public ClientSession(SSLSocket socket, BufferedReader reader, BufferedWriter writer) {
         this.socket = Objects.requireNonNull(socket, "socket must not be null");
@@ -51,6 +53,15 @@ public final class ClientSession implements AutoCloseable {
 
     public void setState(ClientState newState) {
         state.set(Objects.requireNonNull(newState, "newState must not be null"));
+    }
+
+    public void authenticate(UserDto user) {
+        authenticatedUser.set(Objects.requireNonNull(user, "user must not be null"));
+        setState(ClientState.AUTHENTICATED);
+    }
+
+    public UserDto authenticatedUser() {
+        return authenticatedUser.get();
     }
 
     @Override

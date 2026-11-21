@@ -48,6 +48,9 @@ class ServerConfigTest {
         properties.setProperty("protocol.maxLineBytes", "65536");
         properties.setProperty("protocol.charset", "UTF-8");
         properties.setProperty("protocol.fileChunkBytes", "32768");
+        properties.setProperty("auth.bcrypt.rounds", "12");
+        properties.setProperty("auth.maxLoginAttempts", "5");
+        properties.setProperty("auth.lockSeconds", "60");
         properties.setProperty("db.url", "jdbc:postgresql://localhost:5433/zalo");
         properties.setProperty("db.user.env", "DB_USER");
         properties.setProperty("db.password.env", "DB_PASSWORD");
