@@ -15,6 +15,8 @@ public enum MessageType {
     DIRECT_OPENED("direct_opened"),
     SEND_MESSAGE("send_message"),
     MESSAGE("message"),
+    HISTORY_REQUEST("history_request"),
+    HISTORY_RESPONSE("history_response"),
     PING("ping"),
     PONG("pong"),
     ERROR("error"),

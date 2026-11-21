@@ -8,6 +8,7 @@ import com.example.zalo.server.handler.LoginHandler;
 import com.example.zalo.server.handler.RegisterHandler;
 import com.example.zalo.server.handler.ConversationHandler;
 import com.example.zalo.server.handler.ChatHandler;
+import com.example.zalo.server.handler.HistoryHandler;
 import com.example.zalo.server.service.AuthService;
 import com.example.zalo.server.service.ConversationService;
 import com.example.zalo.server.service.MessageService;
@@ -63,7 +64,8 @@ public final class ChatServer implements AutoCloseable {
         if (conversationService != null && messageService != null) {
             packetDispatcher
                     .register(MessageType.OPEN_DIRECT, new ConversationHandler(conversationService, packetWriter))
-                    .register(MessageType.SEND_MESSAGE, new ChatHandler(messageService, sessionRegistry, packetWriter));
+                    .register(MessageType.SEND_MESSAGE, new ChatHandler(messageService, sessionRegistry, packetWriter))
+                    .register(MessageType.HISTORY_REQUEST, new HistoryHandler(messageService, packetWriter));
         }
         this.dispatcher = packetDispatcher;
         this.clientExecutor = Executors.newFixedThreadPool(config.maxClients());

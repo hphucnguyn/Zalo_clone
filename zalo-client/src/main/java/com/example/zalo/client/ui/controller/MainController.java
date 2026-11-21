@@ -1,6 +1,7 @@
 package com.example.zalo.client.ui.controller;
 
 import com.example.zalo.client.service.ChatClient;
+import com.example.zalo.client.net.TcpClient;
 import com.example.zalo.client.util.UiThread;
 import com.example.zalo.common.model.ConversationDto;
 import com.example.zalo.common.model.MessageDto;
@@ -15,6 +16,7 @@ import javafx.scene.control.TextField;
 public final class MainController {
 
     private final ChatClient chatClient;
+    private final TcpClient tcpClient;
     private final UserDto currentUser;
     private final ChatController chatController;
 
@@ -26,9 +28,12 @@ public final class MainController {
     @FXML private ListView<MessageDto> messagesView;
     @FXML private TextField messageField;
     @FXML private Button sendButton;
+    @FXML private Button loadOlderButton;
+    @FXML private Label offlineBanner;
 
-    public MainController(ChatClient chatClient, UserDto currentUser) {
+    public MainController(ChatClient chatClient, TcpClient tcpClient, UserDto currentUser) {
         this.chatClient = chatClient;
+        this.tcpClient = tcpClient;
         this.currentUser = currentUser;
         this.chatController = new ChatController(chatClient);
     }
@@ -36,7 +41,14 @@ public final class MainController {
     @FXML
     private void initialize() {
         welcomeLabel.setText("Xin chào, " + currentUser.displayName());
-        chatController.bind(messagesView, messageField, sendButton, conversationLabel, statusLabel);
+        chatController.bind(messagesView, messageField, sendButton, loadOlderButton, conversationLabel, statusLabel);
+        offlineBanner.setManaged(false);
+        offlineBanner.setVisible(false);
+        tcpClient.addDisconnectConsumer(ignored -> UiThread.run(() -> {
+            offlineBanner.setManaged(true);
+            offlineBanner.setVisible(true);
+            statusLabel.setText("Đang offline: vẫn có thể xem lịch sử đã lưu.");
+        }));
     }
 
     @FXML
@@ -61,6 +73,11 @@ public final class MainController {
     @FXML
     private void sendMessage() {
         chatController.send();
+    }
+
+    @FXML
+    private void loadOlder() {
+        chatController.loadOlder();
     }
 
     private void activateConversation(ConversationDto conversation) {

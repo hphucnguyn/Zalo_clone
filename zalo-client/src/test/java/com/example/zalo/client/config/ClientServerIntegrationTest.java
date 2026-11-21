@@ -152,6 +152,9 @@ class ClientServerIntegrationTest {
         properties.setProperty("tls.truststore.path", certificate.toString());
         properties.setProperty("tls.protocols", "TLSv1.3,TLSv1.2");
         properties.setProperty("tls.expectedHost", expectedHost);
+        properties.setProperty("cache.enabled", "false");
+        properties.setProperty("cache.dir", temporaryDirectory.resolve("cache").toString());
+        properties.setProperty("cache.maxMessagesPerConversation", "2000");
         properties.setProperty("ui.title", "Test");
         return ClientConfig.from(properties);
     }

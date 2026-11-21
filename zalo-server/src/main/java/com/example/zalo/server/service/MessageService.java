@@ -7,6 +7,9 @@ import com.example.zalo.server.repository.ConversationRepository;
 import com.example.zalo.server.repository.MessageRepository;
 
 import java.util.Objects;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
 
 /** Saves a message before it can be broadcast to any online session. */
 public final class MessageService {
@@ -31,6 +34,23 @@ public final class MessageService {
         return new SavedMessage(message, recipients);
     }
 
+    public HistoryPage history(UserDto user, long conversationId, long beforeId, long afterId, int requestedLimit) {
+        if (!conversationRepository.isMember(conversationId, user.id())) {
+            throw new UnauthorizedConversationException();
+        }
+        if (beforeId > 0 && afterId > 0) {
+            throw new IllegalArgumentException("Only one history cursor may be supplied");
+        }
+        int limit = Math.clamp(requestedLimit, 1, 100);
+        List<MessageDto> rowsWithSentinel = messageRepository.findPage(conversationId, beforeId, afterId, limit);
+        boolean hasMore = rowsWithSentinel.size() > limit;
+        List<MessageDto> messages = new ArrayList<>(hasMore ? rowsWithSentinel.subList(0, limit) : rowsWithSentinel);
+        if (afterId == 0) {
+            Collections.reverse(messages);
+        }
+        return new HistoryPage(List.copyOf(messages), hasMore);
+    }
+
     private static String validateContent(String contentInput) {
         if (contentInput == null) {
             throw new IllegalArgumentException("Message content is required");
@@ -43,6 +63,9 @@ public final class MessageService {
     }
 
     public record SavedMessage(MessageDto message, long[] recipientIds) {
+    }
+
+    public record HistoryPage(List<MessageDto> messages, boolean hasMore) {
     }
 
     public static final class UnauthorizedConversationException extends RuntimeException {

@@ -245,6 +245,47 @@ class ChatServerIntegrationTest {
         }
     }
 
+    @Test
+    void historyUsesBeforeAndAfterCursorsWithoutDuplicatingRows() throws Exception {
+        startServer();
+        try (SSLSocket alice = tlsSocket(); SSLSocket bob = tlsSocket()) {
+            alice.startHandshake();
+            bob.startHandshake();
+            registerAndLogin(alice, "alice_history", "Alice");
+            registerAndLogin(bob, "bob_history", "Bob");
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.OPEN_DIRECT, "open-history", Map.of("username", "bob_history"))));
+            long conversationId = JsonUtil.fromJson(read(alice)).data().path("conversation").path("id").asLong();
+
+            for (int index = 1; index <= 3; index++) {
+                write(alice, JsonUtil.toJson(Packet.of(MessageType.SEND_MESSAGE, "send-history-" + index, Map.of(
+                        "conversationId", conversationId, "content", "message-" + index))));
+                read(alice);
+                read(bob);
+            }
+
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.HISTORY_REQUEST, "latest", Map.of(
+                    "conversationId", conversationId, "limit", 2))));
+            Packet latest = JsonUtil.fromJson(read(alice));
+            assertEquals(MessageType.HISTORY_RESPONSE, latest.type());
+            assertEquals(true, latest.data().path("hasMore").asBoolean());
+            assertEquals("message-2", latest.data().path("messages").get(0).path("content").asText());
+            assertEquals("message-3", latest.data().path("messages").get(1).path("content").asText());
+
+            long beforeId = latest.data().path("messages").get(0).path("id").asLong();
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.HISTORY_REQUEST, "older", Map.of(
+                    "conversationId", conversationId, "beforeId", beforeId, "limit", 2))));
+            Packet older = JsonUtil.fromJson(read(alice));
+            assertEquals(false, older.data().path("hasMore").asBoolean());
+            assertEquals("message-1", older.data().path("messages").get(0).path("content").asText());
+
+            long latestId = latest.data().path("messages").get(1).path("id").asLong();
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.HISTORY_REQUEST, "newer", Map.of(
+                    "conversationId", conversationId, "afterId", latestId, "limit", 50))));
+            Packet newer = JsonUtil.fromJson(read(alice));
+            assertEquals(0, newer.data().path("messages").size());
+        }
+    }
+
     private void startServer() throws IOException {
         ServerConfig config = new ServerConfig(
                 "127.0.0.1",
@@ -385,7 +426,7 @@ class ChatServerIntegrationTest {
 
     private static final class InMemoryMessageRepository extends MessageRepository {
         private final AtomicLong ids = new AtomicLong();
-        private final List<String> contents = new ArrayList<>();
+        private final List<StoredMessage> messages = new ArrayList<>();
 
         private InMemoryMessageRepository() {
             super(mock(DataSource.class));
@@ -393,12 +434,34 @@ class ChatServerIntegrationTest {
 
         @Override
         public synchronized long insertText(long conversationId, long senderId, String content, long sentAt) {
-            contents.add(content);
-            return ids.incrementAndGet();
+            long id = ids.incrementAndGet();
+            messages.add(new StoredMessage(id, conversationId, senderId, content, sentAt));
+            return id;
         }
 
         synchronized int count() {
-            return contents.size();
+            return messages.size();
+        }
+
+        @Override
+        public synchronized List<com.example.zalo.common.model.MessageDto> findPage(
+                long conversationId, long beforeId, long afterId, int limit) {
+            java.util.stream.Stream<StoredMessage> stream = messages.stream()
+                    .filter(message -> message.conversationId == conversationId);
+            if (afterId > 0) {
+                stream = stream.filter(message -> message.id > afterId).sorted(java.util.Comparator.comparingLong(message -> message.id));
+            } else {
+                stream = stream.filter(message -> beforeId <= 0 || message.id < beforeId)
+                        .sorted(java.util.Comparator.comparingLong((StoredMessage message) -> message.id).reversed());
+            }
+            return stream.limit(limit + 1L)
+                    .map(message -> new com.example.zalo.common.model.MessageDto(
+                            message.id, message.conversationId, message.senderId, "Sender-" + message.senderId,
+                            message.content, message.sentAt))
+                    .toList();
+        }
+
+        private record StoredMessage(long id, long conversationId, long senderId, String content, long sentAt) {
         }
     }
 }

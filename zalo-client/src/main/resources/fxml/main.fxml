@@ -19,6 +19,7 @@
                 <Button fx:id="openDirectButton" mnemonicParsing="false" onAction="#openDirect" text="Mở chat 1-1" />
             </HBox>
             <Label fx:id="statusLabel" />
+            <Label fx:id="offlineBanner" style="-fx-background-color: #fff3cd; -fx-padding: 8px; -fx-text-fill: #664d03;" text="Đang offline — lịch sử cục bộ vẫn khả dụng." />
             <Label fx:id="conversationLabel" style="-fx-font-weight: bold;" text="Chưa chọn hội thoại" />
         </VBox>
     </top>
@@ -28,9 +29,12 @@
         </ListView>
     </center>
     <bottom>
-        <HBox spacing="8.0">
-            <TextField fx:id="messageField" onAction="#sendMessage" promptText="Nhập tin nhắn" HBox.hgrow="ALWAYS" />
-            <Button fx:id="sendButton" mnemonicParsing="false" onAction="#sendMessage" text="Gửi" />
-        </HBox>
+        <VBox spacing="8.0">
+            <Button fx:id="loadOlderButton" mnemonicParsing="false" onAction="#loadOlder" text="Tải tin cũ hơn" />
+            <HBox spacing="8.0">
+                <TextField fx:id="messageField" onAction="#sendMessage" promptText="Nhập tin nhắn" HBox.hgrow="ALWAYS" />
+                <Button fx:id="sendButton" mnemonicParsing="false" onAction="#sendMessage" text="Gửi" />
+            </HBox>
+        </VBox>
     </bottom>
 </BorderPane>

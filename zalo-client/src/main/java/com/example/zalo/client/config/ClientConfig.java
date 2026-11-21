@@ -15,6 +15,9 @@ public record ClientConfig(
         Path trustCertificatePath,
         String[] tlsProtocols,
         String expectedHost,
+        boolean cacheEnabled,
+        Path cacheDirectory,
+        int cacheMaxMessagesPerConversation,
         String windowTitle) {
 
     public static ClientConfig load() {
@@ -39,6 +42,9 @@ public record ClientConfig(
                 locateCertificate(Path.of(required(properties, "tls.truststore.path"))),
                 required(properties, "tls.protocols").split(","),
                 required(properties, "tls.expectedHost"),
+                Boolean.parseBoolean(required(properties, "cache.enabled")),
+                Path.of(required(properties, "cache.dir")),
+                positiveInt(properties, "cache.maxMessagesPerConversation"),
                 required(properties, "ui.title"));
     }
 
