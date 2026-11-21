@@ -1,0 +1,35 @@
+# Build
+target/
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# SECRET - khong commit
+*.p12
+*.pfx
+*.jks
+*.key
+.env
+!.env.example
+# client chi can server.crt (public) -> duoc phep commit
+!zalo-client/certificates/server.crt
+
+# Runtime data
+logs/
+data/
+downloads/
+*.db
+*.sqlite
+
+# OS
+.DS_Store
+Thumbs.db
+
+.kilo/
