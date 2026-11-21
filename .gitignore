@@ -32,4 +32,6 @@ downloads/
 .DS_Store
 Thumbs.db
 
-.kilo/
+BUSINESS_SPEC.md
+
+TEST_PLAN.md

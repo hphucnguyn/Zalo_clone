@@ -6,9 +6,13 @@ import com.example.zalo.common.util.JsonUtil;
 import com.example.zalo.server.config.ServerConfig;
 import com.example.zalo.server.config.SslContextFactory;
 import com.example.zalo.server.repository.UserRepository;
+import com.example.zalo.server.repository.ConversationRepository;
+import com.example.zalo.server.repository.MessageRepository;
 import com.example.zalo.server.security.LoginAttemptLimiter;
 import com.example.zalo.server.security.PasswordHasher;
 import com.example.zalo.server.service.AuthService;
+import com.example.zalo.server.service.ConversationService;
+import com.example.zalo.server.service.MessageService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -35,6 +39,9 @@ import java.time.Duration;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -51,6 +58,8 @@ class ChatServerIntegrationTest {
     private static Path temporaryDirectory;
     private static Path keystore;
     private ChatServer server;
+    private InMemoryConversationRepository conversations;
+    private InMemoryMessageRepository messages;
 
     @BeforeAll
     static void createTestKeystore() throws Exception {
@@ -197,6 +206,45 @@ class ChatServerIntegrationTest {
         assertEquals(1, server.sessionRegistry().removalCount());
     }
 
+    @Test
+    void directMessageIsSavedBeforeDeliveryAndOfflineRecipientDoesNotPreventSaving() throws Exception {
+        startServer();
+        try (SSLSocket alice = tlsSocket(); SSLSocket bob = tlsSocket()) {
+            alice.startHandshake();
+            bob.startHandshake();
+            long aliceId = registerAndLogin(alice, "alice_chat", "Alice");
+            long bobId = registerAndLogin(bob, "bob_chat", "Bob");
+
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.OPEN_DIRECT, "open-1", Map.of("username", "bob_chat"))));
+            Packet opened = JsonUtil.fromJson(read(alice));
+            assertEquals(MessageType.DIRECT_OPENED, opened.type());
+            assertEquals(true, opened.data().path("success").asBoolean());
+            long conversationId = opened.data().path("conversation").path("id").asLong();
+
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.SEND_MESSAGE, "send-1", Map.of(
+                    "conversationId", conversationId, "content", "Xin chào Bob!"))));
+            Packet senderDelivery = JsonUtil.fromJson(read(alice));
+            Packet recipientDelivery = JsonUtil.fromJson(read(bob));
+            assertEquals(MessageType.MESSAGE, senderDelivery.type());
+            assertEquals(MessageType.MESSAGE, recipientDelivery.type());
+            assertEquals(aliceId, recipientDelivery.data().path("senderId").asLong());
+            assertEquals("Alice", recipientDelivery.data().path("senderName").asText());
+            assertEquals("Xin chào Bob!", recipientDelivery.data().path("content").asText());
+            assertEquals(conversationId, recipientDelivery.data().path("conversationId").asLong());
+            assertEquals(true, recipientDelivery.data().path("sentAt").asLong() > 0);
+            assertEquals(1, messages.count());
+
+            bob.close();
+            await(() -> server.sessionRegistry().findByUserId(bobId).isEmpty());
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.SEND_MESSAGE, "send-2", Map.of(
+                    "conversationId", conversationId, "content", "Tin nhắn khi Bob offline"))));
+            Packet offlineDelivery = JsonUtil.fromJson(read(alice));
+            assertEquals(MessageType.MESSAGE, offlineDelivery.type());
+            assertEquals("Tin nhắn khi Bob offline", offlineDelivery.data().path("content").asText());
+            assertEquals(2, messages.count());
+        }
+    }
+
     private void startServer() throws IOException {
         ServerConfig config = new ServerConfig(
                 "127.0.0.1",
@@ -209,11 +257,28 @@ class ChatServerIntegrationTest {
                 new ServerConfig.AuthConfig(4, 5, Duration.ofSeconds(60)),
                 new ServerConfig.DatabaseConfig("jdbc:unused", "unused", "unused", "schema.sql", 1, 0,
                         Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1)));
+        InMemoryUserRepository users = new InMemoryUserRepository();
+        conversations = new InMemoryConversationRepository();
+        messages = new InMemoryMessageRepository();
         server = new ChatServer(config, SslContextFactory.create(config.tls()), new AuthService(
-                new InMemoryUserRepository(),
+                users,
                 new PasswordHasher(config.auth().bcryptRounds()),
-                new LoginAttemptLimiter(config.auth().maxLoginAttempts(), config.auth().lockDuration())));
+                new LoginAttemptLimiter(config.auth().maxLoginAttempts(), config.auth().lockDuration())),
+                new ConversationService(users, conversations),
+                new MessageService(conversations, messages));
         server.start();
+    }
+
+    private static long registerAndLogin(SSLSocket socket, String username, String displayName) throws Exception {
+        write(socket, JsonUtil.toJson(Packet.of(MessageType.REGISTER, "register-" + username, Map.of(
+                "username", username, "password", "correct-password", "displayName", displayName))));
+        Packet registration = JsonUtil.fromJson(read(socket));
+        assertEquals(true, registration.data().path("success").asBoolean());
+        write(socket, JsonUtil.toJson(Packet.of(MessageType.LOGIN, "login-" + username, Map.of(
+                "username", username, "password", "correct-password"))));
+        Packet login = JsonUtil.fromJson(read(socket));
+        assertEquals(true, login.data().path("success").asBoolean());
+        return login.data().path("user").path("id").asLong();
     }
 
     private SSLSocket tlsSocket() throws IOException, GeneralSecurityException {
@@ -287,6 +352,53 @@ class ChatServerIntegrationTest {
                 throw new UsernameAlreadyExistsException();
             }
             return account;
+        }
+    }
+
+    private static final class InMemoryConversationRepository extends ConversationRepository {
+        private final AtomicLong ids = new AtomicLong();
+        private final Map<Set<Long>, Long> conversations = new ConcurrentHashMap<>();
+        private final Map<Long, Set<Long>> members = new ConcurrentHashMap<>();
+
+        private InMemoryConversationRepository() {
+            super(mock(DataSource.class));
+        }
+
+        @Override
+        public long findOrCreateDirect(long firstUserId, long secondUserId, long createdAt) {
+            Set<Long> users = Set.of(firstUserId, secondUserId);
+            long id = conversations.computeIfAbsent(users, ignored -> ids.incrementAndGet());
+            members.putIfAbsent(id, users);
+            return id;
+        }
+
+        @Override
+        public boolean isMember(long conversationId, long userId) {
+            return members.getOrDefault(conversationId, Set.of()).contains(userId);
+        }
+
+        @Override
+        public long[] memberIds(long conversationId) {
+            return members.getOrDefault(conversationId, Set.of()).stream().mapToLong(Long::longValue).toArray();
+        }
+    }
+
+    private static final class InMemoryMessageRepository extends MessageRepository {
+        private final AtomicLong ids = new AtomicLong();
+        private final List<String> contents = new ArrayList<>();
+
+        private InMemoryMessageRepository() {
+            super(mock(DataSource.class));
+        }
+
+        @Override
+        public synchronized long insertText(long conversationId, long senderId, String content, long sentAt) {
+            contents.add(content);
+            return ids.incrementAndGet();
+        }
+
+        synchronized int count() {
+            return contents.size();
         }
     }
 }

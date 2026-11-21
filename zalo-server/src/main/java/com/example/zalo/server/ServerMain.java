@@ -5,9 +5,13 @@ import com.example.zalo.server.config.ServerConfig;
 import com.example.zalo.server.config.SslContextFactory;
 import com.example.zalo.server.net.ChatServer;
 import com.example.zalo.server.repository.UserRepository;
+import com.example.zalo.server.repository.ConversationRepository;
+import com.example.zalo.server.repository.MessageRepository;
 import com.example.zalo.server.security.LoginAttemptLimiter;
 import com.example.zalo.server.security.PasswordHasher;
 import com.example.zalo.server.service.AuthService;
+import com.example.zalo.server.service.ConversationService;
+import com.example.zalo.server.service.MessageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +33,13 @@ public final class ServerMain {
                          new AuthService(
                                  new UserRepository(database.dataSource()),
                                  new PasswordHasher(config.auth().bcryptRounds()),
-                                 new LoginAttemptLimiter(config.auth().maxLoginAttempts(), config.auth().lockDuration())))) {
+                                 new LoginAttemptLimiter(config.auth().maxLoginAttempts(), config.auth().lockDuration())),
+                         new ConversationService(
+                                 new UserRepository(database.dataSource()),
+                                 new ConversationRepository(database.dataSource())),
+                         new MessageService(
+                                 new ConversationRepository(database.dataSource()),
+                                 new MessageRepository(database.dataSource())))) {
                 LOGGER.info("DB connected, schema ready");
                 LOGGER.info("TLS context loaded");
                 chatServer.start();

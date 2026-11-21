@@ -13,12 +13,15 @@ import javafx.scene.control.TextField;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
+import java.util.function.Consumer;
+import com.example.zalo.common.model.UserDto;
 
 /** Login and registration screen; all network operations run away from the FX thread. */
 public final class LoginController {
 
     private final TcpClient tcpClient;
     private final AuthClient authClient;
+    private final Consumer<UserDto> authenticatedConsumer;
 
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
@@ -27,9 +30,10 @@ public final class LoginController {
     @FXML private Button registerButton;
     @FXML private Label statusLabel;
 
-    public LoginController(TcpClient tcpClient, AuthClient authClient) {
+    public LoginController(TcpClient tcpClient, AuthClient authClient, Consumer<UserDto> authenticatedConsumer) {
         this.tcpClient = tcpClient;
         this.authClient = authClient;
+        this.authenticatedConsumer = authenticatedConsumer;
     }
 
     @FXML
@@ -93,7 +97,7 @@ public final class LoginController {
         }
         passwordField.clear();
         if (isLogin) {
-            statusLabel.setText("Đăng nhập thành công. Chức năng chat sẽ được mở ở bước tiếp theo.");
+            authenticatedConsumer.accept(response.user());
         } else {
             statusLabel.setText("Đăng ký thành công. Bây giờ hãy đăng nhập.");
         }

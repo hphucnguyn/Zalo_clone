@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -28,8 +29,8 @@ public final class TcpClient implements AutoCloseable {
     private final SSLContext sslContext;
     private final AtomicReference<ConnectionState> state = new AtomicReference<>(ConnectionState.DISCONNECTED);
     private final ExecutorService receiveExecutor = Executors.newSingleThreadExecutor();
-    private volatile Consumer<Packet> packetConsumer = ignored -> { };
-    private volatile Consumer<Throwable> disconnectConsumer = ignored -> { };
+    private final CopyOnWriteArrayList<Consumer<Packet>> packetConsumers = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<Consumer<Throwable>> disconnectConsumers = new CopyOnWriteArrayList<>();
     private volatile SSLSocket socket;
     private volatile PacketSender packetSender;
 
@@ -94,15 +95,27 @@ public final class TcpClient implements AutoCloseable {
     }
 
     public void setPacketConsumer(Consumer<Packet> consumer) {
-        packetConsumer = Objects.requireNonNull(consumer, "consumer must not be null");
+        packetConsumers.clear();
+        packetConsumers.add(Objects.requireNonNull(consumer, "consumer must not be null"));
     }
 
     public void setDisconnectConsumer(Consumer<Throwable> consumer) {
-        disconnectConsumer = Objects.requireNonNull(consumer, "consumer must not be null");
+        disconnectConsumers.clear();
+        disconnectConsumers.add(Objects.requireNonNull(consumer, "consumer must not be null"));
+    }
+
+    public void addPacketConsumer(Consumer<Packet> consumer) {
+        packetConsumers.add(Objects.requireNonNull(consumer, "consumer must not be null"));
+    }
+
+    public void addDisconnectConsumer(Consumer<Throwable> consumer) {
+        disconnectConsumers.add(Objects.requireNonNull(consumer, "consumer must not be null"));
     }
 
     private void dispatchPacket(Packet packet) {
-        packetConsumer.accept(packet);
+        for (Consumer<Packet> consumer : packetConsumers) {
+            consumer.accept(packet);
+        }
     }
 
     private void connectionClosed(Throwable cause) {
@@ -117,7 +130,9 @@ public final class TcpClient implements AutoCloseable {
                 // The receive loop already reported the connection failure.
             }
         }
-        disconnectConsumer.accept(cause);
+        for (Consumer<Throwable> consumer : disconnectConsumers) {
+            consumer.accept(cause);
+        }
     }
 
     @Override

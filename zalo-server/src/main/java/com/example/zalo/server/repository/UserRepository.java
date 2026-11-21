@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Objects;
 import java.util.Optional;
+import com.example.zalo.common.model.UserDto;
 
 /** JDBC access for the users table. Passwords are only handled as BCrypt hashes. */
 public class UserRepository {
@@ -29,6 +30,11 @@ public class UserRepository {
         } catch (SQLException exception) {
             throw new IllegalStateException("Could not load user", exception);
         }
+    }
+
+    public Optional<UserDto> findPublicByUsername(String username) {
+        return findByUsername(username).map(account -> new UserDto(
+                account.id(), account.username(), account.displayName(), account.avatarPath(), false));
     }
 
     public UserAccount create(String username, String passwordHash, String displayName, long createdAt) {

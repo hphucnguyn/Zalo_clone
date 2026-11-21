@@ -37,6 +37,12 @@ public final class SessionRegistry {
         return sessions.get(sessionId);
     }
 
+    public Collection<ClientSession> findByUserId(long userId) {
+        return sessions.values().stream()
+                .filter(session -> session.authenticatedUser() != null && session.authenticatedUser().id() == userId)
+                .toList();
+    }
+
     public int size() {
         return sessions.size();
     }

@@ -11,6 +11,8 @@ public enum MessageType {
     REGISTER_RESULT("register_result"),
     LOGIN("login"),
     LOGIN_RESULT("login_result"),
+    OPEN_DIRECT("open_direct"),
+    DIRECT_OPENED("direct_opened"),
     SEND_MESSAGE("send_message"),
     MESSAGE("message"),
     PING("ping"),

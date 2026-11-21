@@ -23,8 +23,8 @@ public final class AuthClient {
 
     public AuthClient(TcpClient tcpClient) {
         this.tcpClient = tcpClient;
-        tcpClient.setPacketConsumer(this::handlePacket);
-        tcpClient.setDisconnectConsumer(this::handleDisconnect);
+        tcpClient.addPacketConsumer(this::handlePacket);
+        tcpClient.addDisconnectConsumer(this::handleDisconnect);
     }
 
     public CompletableFuture<AuthResponse> register(String username, String password, String displayName) {

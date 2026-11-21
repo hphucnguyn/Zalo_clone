@@ -6,7 +6,11 @@ import com.example.zalo.server.handler.PacketDispatcher;
 import com.example.zalo.server.handler.PingHandler;
 import com.example.zalo.server.handler.LoginHandler;
 import com.example.zalo.server.handler.RegisterHandler;
+import com.example.zalo.server.handler.ConversationHandler;
+import com.example.zalo.server.handler.ChatHandler;
 import com.example.zalo.server.service.AuthService;
+import com.example.zalo.server.service.ConversationService;
+import com.example.zalo.server.service.MessageService;
 import com.example.zalo.server.session.SessionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,13 +44,28 @@ public final class ChatServer implements AutoCloseable {
     private volatile SSLServerSocket serverSocket;
 
     public ChatServer(ServerConfig config, SSLContext sslContext, AuthService authService) {
+        this(config, sslContext, authService, null, null);
+    }
+
+    public ChatServer(
+            ServerConfig config,
+            SSLContext sslContext,
+            AuthService authService,
+            ConversationService conversationService,
+            MessageService messageService) {
         this.config = Objects.requireNonNull(config, "config must not be null");
         this.sslContext = Objects.requireNonNull(sslContext, "sslContext must not be null");
         Objects.requireNonNull(authService, "authService must not be null");
-        this.dispatcher = new PacketDispatcher(packetWriter)
+        PacketDispatcher packetDispatcher = new PacketDispatcher(packetWriter)
                 .register(MessageType.REGISTER, new RegisterHandler(authService, packetWriter))
                 .register(MessageType.LOGIN, new LoginHandler(authService, packetWriter))
                 .register(MessageType.PING, new PingHandler(packetWriter));
+        if (conversationService != null && messageService != null) {
+            packetDispatcher
+                    .register(MessageType.OPEN_DIRECT, new ConversationHandler(conversationService, packetWriter))
+                    .register(MessageType.SEND_MESSAGE, new ChatHandler(messageService, sessionRegistry, packetWriter));
+        }
+        this.dispatcher = packetDispatcher;
         this.clientExecutor = Executors.newFixedThreadPool(config.maxClients());
     }
 
