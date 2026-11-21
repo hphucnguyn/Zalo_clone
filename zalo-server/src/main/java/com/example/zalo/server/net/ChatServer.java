@@ -16,7 +16,9 @@ import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLSocket;
 import java.io.IOException;
 import java.net.SocketException;
+import java.util.Set;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -34,6 +36,7 @@ public final class ChatServer implements AutoCloseable {
     private final ExecutorService clientExecutor;
     private final ExecutorService acceptExecutor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean();
+    private final Set<SSLSocket> acceptedSockets = ConcurrentHashMap.newKeySet();
     private volatile SSLServerSocket serverSocket;
 
     public ChatServer(ServerConfig config, SSLContext sslContext, AuthService authService) {
@@ -80,14 +83,21 @@ public final class ChatServer implements AutoCloseable {
         while (running.get()) {
             try {
                 SSLSocket socket = (SSLSocket) serverSocket.accept();
+                acceptedSockets.add(socket);
                 socket.setSoTimeout((int) config.readTimeout().toMillis());
-                clientExecutor.execute(new ClientHandler(
-                        socket,
-                        sessionRegistry,
-                        dispatcher,
-                        packetWriter,
-                        config.protocol().maxLineBytes(),
-                        config.protocol().charset()));
+                clientExecutor.execute(() -> {
+                    try {
+                        new ClientHandler(
+                                socket,
+                                sessionRegistry,
+                                dispatcher,
+                                packetWriter,
+                                config.protocol().maxLineBytes(),
+                                config.protocol().charset()).run();
+                    } finally {
+                        acceptedSockets.remove(socket);
+                    }
+                });
             } catch (SocketException exception) {
                 if (running.get()) {
                     LOGGER.warn("TLS accept loop stopped unexpectedly", exception);
@@ -113,6 +123,14 @@ public final class ChatServer implements AutoCloseable {
             LOGGER.debug("Could not close TLS server socket", exception);
         }
         sessionRegistry.closeAll();
+        for (SSLSocket socket : acceptedSockets) {
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+                // All sockets must receive a best-effort shutdown signal.
+            }
+        }
+        acceptedSockets.clear();
         acceptExecutor.shutdownNow();
         clientExecutor.shutdownNow();
     }

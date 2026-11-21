@@ -50,4 +50,12 @@ public final class JsonUtil {
     public static JsonNode nullNode() {
         return MAPPER.nullNode();
     }
+
+    public static <T> T treeToValue(JsonNode node, Class<T> targetType) {
+        try {
+            return MAPPER.treeToValue(node, targetType);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("Could not convert JSON data", exception);
+        }
+    }
 }
