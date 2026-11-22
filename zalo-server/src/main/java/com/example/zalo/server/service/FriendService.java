@@ -34,7 +34,8 @@ public final class FriendService {
         if(friends.areFriends(senderId,receiverId)) throw new AlreadyFriendsException();
         if(friends.findPending(senderId,receiverId).isPresent()) throw new PendingRequestException();
         if(friends.findPending(receiverId,senderId).isPresent()) throw new IncomingRequestException();
-        return friends.createRequest(senderId,receiverId,TimeUtil.nowEpochMillis());
+        try { return friends.createRequest(senderId,receiverId,TimeUtil.nowEpochMillis()); }
+        catch(FriendRepository.RequestAlreadyPendingException e) { throw new PendingRequestException(); }
     }
 
     public List<UserDto> listFriends(long userId) { return users.findFriends(userId); }

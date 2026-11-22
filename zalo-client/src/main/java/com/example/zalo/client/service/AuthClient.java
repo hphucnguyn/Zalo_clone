@@ -61,6 +61,10 @@ public final class AuthClient {
     }
 
     private void handlePacket(Packet packet) {
+        // Server push packets (presence, friend updates, messages) do not correlate to an auth request.
+        if (packet.requestId() == null) {
+            return;
+        }
         PendingRequest request = pending.remove(packet.requestId());
         if (request == null) {
             return;

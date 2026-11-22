@@ -188,6 +188,9 @@ public final class ChatClient {
 
     private void handlePacket(Packet packet) {
         if (packet.type() == MessageType.ERROR) {
+            if (packet.requestId() == null) {
+                return;
+            }
             IOException error = new IOException(packet.data().path("message").asText("Server error"));
             CompletableFuture<ConversationDto> direct = pendingDirects.remove(packet.requestId());
             if (direct != null) {

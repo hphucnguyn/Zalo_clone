@@ -33,6 +33,7 @@ public final class FriendClient {
     }
     private void receive(Packet p) {
         if(p.type()==MessageType.FRIEND_REQUEST_UPDATE) { updates.accept(p); return; }
+        if(p.requestId()==null) return;
         Pending request=pending.remove(p.requestId()); if(request==null) return;
         if(p.type()==MessageType.ERROR) { request.future.completeExceptionally(new IOException(p.data().path("message").asText("Server error")));return; }
         MessageType expected=switch(request.type) { case SEARCH_USER_BY_PHONE->MessageType.USER_SEARCH_RESULT; case LIST_FRIENDS->MessageType.FRIENDS_LIST; case LIST_FRIEND_REQUESTS->MessageType.FRIEND_REQUESTS; default->MessageType.FRIEND_REQUEST_RESULT; };

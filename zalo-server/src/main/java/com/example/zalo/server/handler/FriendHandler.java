@@ -49,7 +49,7 @@ public final class FriendHandler implements PacketHandler {
         try {
             long id=service.request(me,receiver);
             Map<String,Object> body=Map.of("requestId",id,"sender",session.authenticatedUser());
-            for(ClientSession target:sessions.findByUserId(receiver)) writer.write(target,Packet.of(MessageType.FRIEND_REQUEST_UPDATE,null,body));
+            notifyUser(receiver,Packet.of(MessageType.FRIEND_REQUEST_UPDATE,null,body));
             writer.write(session,Packet.of(MessageType.FRIEND_REQUEST_RESULT,packet.requestId(),Map.of("success",true,"message","Đã gửi lời mời kết bạn.")));
         } catch(FriendService.AlreadyFriendsException e) { result(session,packet,"Hai bạn đã là bạn bè."); }
         catch(FriendService.PendingRequestException e) { result(session,packet,"Lời mời đã được gửi trước đó."); }
@@ -64,8 +64,15 @@ public final class FriendHandler implements PacketHandler {
         if(sender.isEmpty()) { error(session,packet,"Lời mời không còn khả dụng."); return; }
         writer.write(session,Packet.of(MessageType.FRIEND_REQUEST_RESULT,packet.requestId(),Map.of("success",true,"message",accept?"Đã chấp nhận lời mời.":"Đã từ chối lời mời.")));
         Map<String,Object> update=Map.of("accepted",accept,"userId",me);
-        for(ClientSession target:sessions.findByUserId(sender.getAsLong())) writer.write(target,Packet.of(MessageType.FRIEND_REQUEST_UPDATE,null,update));
-        if(accept) for(ClientSession target:sessions.findByUserId(me)) writer.write(target,Packet.of(MessageType.FRIEND_REQUEST_UPDATE,null,update));
+        notifyUser(sender.getAsLong(),Packet.of(MessageType.FRIEND_REQUEST_UPDATE,null,update));
+        if(accept) notifyUser(me,Packet.of(MessageType.FRIEND_REQUEST_UPDATE,null,update));
+    }
+
+    private void notifyUser(long userId,Packet packet) {
+        for(ClientSession target:sessions.findByUserId(userId)) {
+            try { writer.write(target,packet); }
+            catch(IOException exception) { sessions.unregister(target); }
+        }
     }
 
     private void result(ClientSession session,Packet packet,String message) throws IOException {

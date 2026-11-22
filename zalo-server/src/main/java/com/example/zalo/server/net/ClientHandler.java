@@ -121,7 +121,13 @@ public final class ClientHandler implements Runnable {
                         "Authentication is required");
                 continue;
             }
-            dispatcher.dispatch(session, packet);
+            try {
+                dispatcher.dispatch(session, packet);
+            } catch (RuntimeException exception) {
+                LOGGER.error("Packet handler failed for type {}", packet.type(), exception);
+                dispatcher.sendError(session, packet.requestId(), ErrorCode.INTERNAL_ERROR,
+                        "Yêu cầu chưa xử lý được. Hãy thử lại sau.");
+            }
         }
     }
 
