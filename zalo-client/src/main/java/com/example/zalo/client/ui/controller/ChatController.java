@@ -136,7 +136,7 @@ public final class ChatController {
         }
         visibleMessages.setAll(chatClient.messages(activeConversation.id()));
         if (!visibleMessages.isEmpty()) {
-            messagesView.scrollTo(visibleMessages.getLast());
+            messagesView.scrollTo(visibleMessages.get(visibleMessages.size() - 1));
         }
     }
 

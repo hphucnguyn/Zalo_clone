@@ -96,7 +96,7 @@ public final class ConversationCell extends ListCell<ConversationDto> {
         String timeStr = "";
 
         if (msgs != null && !msgs.isEmpty()) {
-            MessageDto last = msgs.getLast();
+            MessageDto last = msgs.get(msgs.size() - 1);
             snippet = (last.senderName() != null ? last.senderName() + ": " : "") + last.content();
             timeStr = formatTime(last.sentAt());
         }
