@@ -44,8 +44,10 @@ public final class AuthService {
             return AuthResult.failure(AuthResult.Failure.USERNAME_UNAVAILABLE);
         }
         try {
-            UserRepository.UserAccount account = userRepository.create(
-                    username, passwordHasher.hash(password), displayName, phoneNumber, TimeUtil.nowEpochMillis());
+            String passwordHash = passwordHasher.hash(password);
+            UserRepository.UserAccount account = phoneNumber == null
+                    ? userRepository.create(username, passwordHash, displayName, TimeUtil.nowEpochMillis())
+                    : userRepository.create(username, passwordHash, displayName, phoneNumber, TimeUtil.nowEpochMillis());
             return AuthResult.success(toUserDto(account));
         } catch (UserRepository.UsernameAlreadyExistsException exception) {
             return AuthResult.failure(AuthResult.Failure.USERNAME_UNAVAILABLE);

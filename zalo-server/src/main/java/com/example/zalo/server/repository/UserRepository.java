@@ -79,6 +79,10 @@ public class UserRepository {
         }
     }
 
+    public UserAccount create(String username, String passwordHash, String displayName, long createdAt) {
+        return create(username, passwordHash, displayName, null, createdAt);
+    }
+
     public UserAccount create(String username, String passwordHash, String displayName, String phoneNumber, long createdAt) {
         String sql = "INSERT INTO users (username, password_hash, display_name, phone_number, created_at) VALUES (?, ?, ?, ?, ?)";
         try (Connection connection = dataSource.getConnection();
