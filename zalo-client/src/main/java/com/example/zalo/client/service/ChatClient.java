@@ -157,6 +157,31 @@ public final class ChatClient {
         return presenceByUser.getOrDefault(userId, false);
     }
 
+    public void requestPresence(long userId) {
+        requestPresence(userId, null);
+    }
+
+    public void requestPresence(long userId, String username) {
+        if (userId <= 0 && (username == null || username.isBlank())) {
+            return;
+        }
+        Map<String, Object> data = new java.util.HashMap<>();
+        if (userId > 0) {
+            data.put("userId", userId);
+        }
+        if (username != null && !username.isBlank()) {
+            data.put("username", username);
+        }
+        try {
+            tcpClient.send(Packet.of(
+                    MessageType.PRESENCE_REQUEST,
+                    UUID.randomUUID().toString(),
+                    data));
+        } catch (IOException ignored) {
+            // The presence snapshot is only an optimization; realtime packets remain authoritative.
+        }
+    }
+
     public void addStatusConsumer(Consumer<Long> consumer) {
         statusConsumers.add(consumer);
     }

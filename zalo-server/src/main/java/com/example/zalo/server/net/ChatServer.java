@@ -4,6 +4,7 @@ import com.example.zalo.common.protocol.MessageType;
 import com.example.zalo.server.config.ServerConfig;
 import com.example.zalo.server.handler.PacketDispatcher;
 import com.example.zalo.server.handler.PingHandler;
+import com.example.zalo.server.handler.PresenceRequestHandler;
 import com.example.zalo.server.handler.LoginHandler;
 import com.example.zalo.server.handler.RegisterHandler;
 import com.example.zalo.server.handler.ConversationHandler;
@@ -92,6 +93,11 @@ public final class ChatServer implements AutoCloseable {
                 .register(MessageType.REGISTER, new RegisterHandler(authService, packetWriter))
                 .register(MessageType.LOGIN, new LoginHandler(authService, packetWriter, this.presenceService))
                 .register(MessageType.PING, new PingHandler(packetWriter));
+        if (this.presenceService != null && userRepository != null) {
+            packetDispatcher.register(
+                    MessageType.PRESENCE_REQUEST,
+                    new PresenceRequestHandler(this.presenceService, userRepository));
+        }
         if (conversationService != null && messageService != null) {
             packetDispatcher
                     .register(MessageType.OPEN_DIRECT, new ConversationHandler(conversationService, packetWriter, this.presenceService))

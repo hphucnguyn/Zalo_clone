@@ -468,6 +468,11 @@ public final class MainController {
     private void activateConversation(ConversationDto conversation) {
         chatController.showConversation(conversation);
         refreshPresence();
+        if (conversation.counterpart() != null) {
+            chatClient.requestPresence(
+                    conversation.counterpart().id(),
+                    conversation.counterpart().username());
+        }
         statusLabel.setText("");
 
         boolean isGroup = "GROUP".equalsIgnoreCase(conversation.type());

@@ -101,7 +101,7 @@ public final class MessageCache implements AutoCloseable {
                     if ("DIRECT".equalsIgnoreCase(type)) {
                         long counterpartId = result.getLong("counterpart_id");
                         if (result.wasNull()) {
-                            counterpartId = id;
+                            counterpartId = -1;
                         }
                         String username = result.getString("counterpart_username");
                         String displayName = result.getString("counterpart_display_name");

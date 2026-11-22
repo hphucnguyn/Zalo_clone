@@ -208,6 +208,26 @@ class ChatServerIntegrationTest {
     }
 
     @Test
+    void presenceRequestReturnsCurrentServerState() throws Exception {
+        startServer();
+        try (SSLSocket alice = tlsSocket(); SSLSocket bob = tlsSocket()) {
+            alice.startHandshake();
+            bob.startHandshake();
+            registerAndLogin(alice, "alice_snapshot", "Alice");
+            long bobId = registerAndLogin(bob, "bob_snapshot", "Bob");
+
+            write(alice, JsonUtil.toJson(Packet.of(
+                    MessageType.PRESENCE_REQUEST,
+                    "presence-request",
+                    Map.of("userId", bobId))));
+            Packet presence = readUntilType(alice, MessageType.PRESENCE);
+
+            assertEquals(bobId, presence.data().path("userId").asLong());
+            assertEquals(true, presence.data().path("online").asBoolean());
+        }
+    }
+
+    @Test
     void openingDirectConversationReportsCounterpartPresence() throws Exception {
         startServer();
         try (SSLSocket alice = tlsSocket(); SSLSocket bob = tlsSocket()) {
