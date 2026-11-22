@@ -12,28 +12,38 @@ import javafx.scene.control.TextField;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.function.Supplier;
 import java.util.function.Consumer;
 import com.example.zalo.common.model.UserDto;
 
-/** Login and registration screen; all network operations run away from the FX thread. */
+/** Login screen; connects to server and handles authentication. */
 public final class LoginController {
 
     private final TcpClient tcpClient;
     private final AuthClient authClient;
     private final Consumer<UserDto> authenticatedConsumer;
+    private final Runnable onGoToRegister;
 
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
-    @FXML private TextField displayNameField;
     @FXML private Button loginButton;
-    @FXML private Button registerButton;
     @FXML private Label statusLabel;
 
-    public LoginController(TcpClient tcpClient, AuthClient authClient, Consumer<UserDto> authenticatedConsumer) {
+    public LoginController(
+            TcpClient tcpClient,
+            AuthClient authClient,
+            Consumer<UserDto> authenticatedConsumer,
+            Runnable onGoToRegister) {
         this.tcpClient = tcpClient;
         this.authClient = authClient;
         this.authenticatedConsumer = authenticatedConsumer;
+        this.onGoToRegister = onGoToRegister;
+    }
+
+    public LoginController(
+            TcpClient tcpClient,
+            AuthClient authClient,
+            Consumer<UserDto> authenticatedConsumer) {
+        this(tcpClient, authClient, authenticatedConsumer, () -> {});
     }
 
     @FXML
@@ -42,8 +52,18 @@ public final class LoginController {
         statusLabel.setText("Đang kết nối an toàn tới server...");
         authClient.setDisconnectConsumer(ignored -> UiThread.run(() -> {
             setActionsDisabled(true);
+            statusLabel.setStyle("-fx-text-fill: #e53935;");
             statusLabel.setText("Mất kết nối với server.");
         }));
+
+        if (tcpClient.state() == com.example.zalo.client.state.ConnectionState.AUTHENTICATED
+                || tcpClient.state() == com.example.zalo.client.state.ConnectionState.TLS_READY) {
+            setActionsDisabled(false);
+            statusLabel.setStyle("-fx-text-fill: #2e7d32;");
+            statusLabel.setText("Đã kết nối TLS. Hãy đăng nhập.");
+            return;
+        }
+
         CompletableFuture.runAsync(() -> {
             try {
                 tcpClient.connect();
@@ -53,59 +73,60 @@ public final class LoginController {
         }).whenComplete((ignored, exception) -> UiThread.run(() -> {
             if (exception == null) {
                 setActionsDisabled(false);
-                statusLabel.setText("Đã kết nối TLS. Hãy đăng nhập hoặc đăng ký.");
+                statusLabel.setStyle("-fx-text-fill: #2e7d32;");
+                statusLabel.setText("Đã kết nối TLS. Hãy đăng nhập.");
             } else {
                 setActionsDisabled(true);
+                statusLabel.setStyle("-fx-text-fill: #e53935;");
                 statusLabel.setText("Không thể kết nối an toàn tới server.");
             }
         }));
     }
 
     @FXML
-    private void register() {
-        submit(() -> authClient.register(usernameField.getText(), passwordField.getText(), displayNameField.getText()), false);
-    }
-
-    @FXML
     private void login() {
-        submit(() -> authClient.login(usernameField.getText(), passwordField.getText()), true);
-    }
+        String username = usernameField.getText() == null ? "" : usernameField.getText().trim();
+        String password = passwordField.getText() == null ? "" : passwordField.getText();
 
-    private void submit(Supplier<CompletableFuture<AuthResponse>> request, boolean isLogin) {
-        if (usernameField.getText().isBlank() || passwordField.getText().isBlank()
-                || (!isLogin && displayNameField.getText().isBlank())) {
-            statusLabel.setText("Vui lòng nhập đầy đủ thông tin.");
+        if (username.isEmpty() || password.isEmpty()) {
+            statusLabel.setStyle("-fx-text-fill: #e53935;");
+            statusLabel.setText("Vui lòng nhập tên đăng nhập và mật khẩu.");
             return;
         }
+
         setActionsDisabled(true);
-        statusLabel.setText(isLogin ? "Đang đăng nhập..." : "Đang đăng ký...");
-        request.get().whenComplete((response, exception) -> UiThread.run(() -> {
+        statusLabel.setStyle("-fx-text-fill: #3c4043;");
+        statusLabel.setText("Đang đăng nhập...");
+
+        authClient.login(username, password).whenComplete((response, exception) -> UiThread.run(() -> {
             if (exception != null) {
-                statusLabel.setText("Yêu cầu không hoàn thành. Kiểm tra kết nối và thử lại.");
+                statusLabel.setStyle("-fx-text-fill: #e53935;");
+                statusLabel.setText("Lỗi đăng nhập: Kiểm tra kết nối và thử lại.");
                 setActionsDisabled(tcpClient.state() == com.example.zalo.client.state.ConnectionState.DISCONNECTED);
                 return;
             }
-            handleResponse(response, isLogin);
+            if (!response.successful()) {
+                statusLabel.setStyle("-fx-text-fill: #e53935;");
+                statusLabel.setText(response.message());
+                setActionsDisabled(false);
+                return;
+            }
+            passwordField.clear();
+            authenticatedConsumer.accept(response.user());
+            setActionsDisabled(false);
         }));
     }
 
-    private void handleResponse(AuthResponse response, boolean isLogin) {
-        if (!response.successful()) {
-            statusLabel.setText(response.message());
-            setActionsDisabled(false);
-            return;
+    @FXML
+    private void goToRegister() {
+        if (onGoToRegister != null) {
+            onGoToRegister.run();
         }
-        passwordField.clear();
-        if (isLogin) {
-            authenticatedConsumer.accept(response.user());
-        } else {
-            statusLabel.setText("Đăng ký thành công. Bây giờ hãy đăng nhập.");
-        }
-        setActionsDisabled(false);
     }
 
     private void setActionsDisabled(boolean disabled) {
-        loginButton.setDisable(disabled);
-        registerButton.setDisable(disabled);
+        if (loginButton != null) {
+            loginButton.setDisable(disabled);
+        }
     }
 }

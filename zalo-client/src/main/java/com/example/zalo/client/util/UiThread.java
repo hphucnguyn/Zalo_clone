@@ -15,4 +15,10 @@ public final class UiThread {
             Platform.runLater(action);
         }
     }
+
+    public static void runLater(long delayMillis, Runnable action) {
+        java.util.concurrent.CompletableFuture.delayedExecutor(
+                delayMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .execute(() -> run(action));
+    }
 }
