@@ -27,6 +27,7 @@ public final class ChatClient {
     private final TcpClient tcpClient;
     private final ConcurrentMap<String, CompletableFuture<ConversationDto>> pendingDirects = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, CompletableFuture<HistoryPage>> pendingHistory = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, CompletableFuture<ConversationDto>> pendingGroups = new ConcurrentHashMap<>();
     private final ConcurrentMap<Long, CopyOnWriteArrayList<MessageDto>> messagesByConversation = new ConcurrentHashMap<>();
     private final CopyOnWriteArrayList<Consumer<MessageDto>> messageConsumers = new CopyOnWriteArrayList<>();
     private final ConcurrentMap<Long, MessageStatus> statusesByMessage = new ConcurrentHashMap<>();
@@ -65,6 +66,28 @@ public final class ChatClient {
         tcpClient.send(Packet.of(MessageType.SEND_MESSAGE, UUID.randomUUID().toString(), Map.of(
                 "conversationId", conversationId,
                 "content", content)));
+    }
+
+    public CompletableFuture<ConversationDto> createGroup(String name) {
+        String requestId = UUID.randomUUID().toString();
+        CompletableFuture<ConversationDto> future = new CompletableFuture<>();
+        pendingGroups.put(requestId, future);
+        try {
+            tcpClient.send(Packet.of(MessageType.CREATE_GROUP, requestId, Map.of("name", name)));
+        } catch (IOException exception) {
+            pendingGroups.remove(requestId);
+            future.completeExceptionally(exception);
+        }
+        return future;
+    }
+
+    public void addMember(long conversationId, String username) throws IOException {
+        tcpClient.send(Packet.of(MessageType.ADD_MEMBER, UUID.randomUUID().toString(), Map.of(
+                "conversationId", conversationId, "username", username)));
+    }
+
+    public void leaveGroup(long conversationId) throws IOException {
+        tcpClient.send(Packet.of(MessageType.LEAVE_GROUP, UUID.randomUUID().toString(), Map.of("conversationId", conversationId)));
     }
 
     public CompletableFuture<HistoryPage> requestHistory(long conversationId, long beforeId, long afterId, int limit) {
@@ -166,6 +189,8 @@ public final class ChatClient {
             if (history != null) {
                 history.completeExceptionally(error);
             }
+            CompletableFuture<ConversationDto> group = pendingGroups.remove(packet.requestId());
+            if (group != null) group.completeExceptionally(error);
             return;
         }
         if (packet.type() == MessageType.DIRECT_OPENED) {
@@ -178,6 +203,11 @@ public final class ChatClient {
                 return;
             }
             pending.complete(JsonUtil.treeToValue(packet.data().path("conversation"), ConversationDto.class));
+            return;
+        }
+        if (packet.type() == MessageType.GROUP_CREATED) {
+            CompletableFuture<ConversationDto> pending = pendingGroups.remove(packet.requestId());
+            if (pending != null) pending.complete(JsonUtil.treeToValue(packet.data().path("conversation"), ConversationDto.class));
             return;
         }
         if (packet.type() == MessageType.MESSAGE) {
@@ -229,6 +259,8 @@ public final class ChatClient {
         pendingDirects.clear();
         pendingHistory.forEach((id, future) -> future.completeExceptionally(disconnected));
         pendingHistory.clear();
+        pendingGroups.forEach((id, future) -> future.completeExceptionally(disconnected));
+        pendingGroups.clear();
     }
 
     private void mergeMessages(List<MessageDto> messages) {

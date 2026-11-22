@@ -37,6 +37,23 @@ public class UserRepository {
                 account.id(), account.username(), account.displayName(), account.avatarPath(), false));
     }
 
+    public Optional<UserDto> findPublicById(long userId) {
+        String sql = "SELECT id, username, display_name, avatar_path FROM users WHERE id = ?";
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, userId);
+            try (ResultSet result = statement.executeQuery()) {
+                if (!result.next()) {
+                    return Optional.empty();
+                }
+                return Optional.of(new UserDto(result.getLong("id"), result.getString("username"),
+                        result.getString("display_name"), result.getString("avatar_path"), false));
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Could not load public user", exception);
+        }
+    }
+
     public UserAccount create(String username, String passwordHash, String displayName, long createdAt) {
         String sql = "INSERT INTO users (username, password_hash, display_name, created_at) VALUES (?, ?, ?, ?)";
         try (Connection connection = dataSource.getConnection();

@@ -23,6 +23,10 @@ public final class MainController {
     @FXML private Label welcomeLabel;
     @FXML private TextField recipientUsernameField;
     @FXML private Button openDirectButton;
+    @FXML private TextField groupNameField;
+    @FXML private Button createGroupButton;
+    @FXML private TextField memberUsernameField;
+    @FXML private Button addMemberButton;
     @FXML private Label statusLabel;
     @FXML private Label conversationLabel;
     @FXML private ListView<MessageDto> messagesView;
@@ -71,6 +75,40 @@ public final class MainController {
             }
             activateConversation(conversation);
         }));
+    }
+
+    @FXML
+    private void createGroup() {
+        if (groupNameField.getText().isBlank()) {
+            statusLabel.setText("Nhập tên nhóm.");
+            return;
+        }
+        createGroupButton.setDisable(true);
+        chatClient.createGroup(groupNameField.getText()).whenComplete((conversation, exception) -> UiThread.run(() -> {
+            createGroupButton.setDisable(false);
+            if (exception != null) {
+                statusLabel.setText("Không thể tạo nhóm.");
+                return;
+            }
+            activateConversation(conversation);
+            statusLabel.setText("Đã tạo nhóm.");
+        }));
+    }
+
+    @FXML
+    private void addMember() {
+        ConversationDto active = chatController.activeConversation();
+        if (active == null || !"GROUP".equals(active.type()) || memberUsernameField.getText().isBlank()) {
+            statusLabel.setText("Mở nhóm rồi nhập username thành viên.");
+            return;
+        }
+        try {
+            chatClient.addMember(active.id(), memberUsernameField.getText());
+            memberUsernameField.clear();
+            statusLabel.setText("Đã gửi yêu cầu thêm thành viên.");
+        } catch (java.io.IOException exception) {
+            statusLabel.setText("Không thể thêm thành viên khi offline.");
+        }
     }
 
     @FXML

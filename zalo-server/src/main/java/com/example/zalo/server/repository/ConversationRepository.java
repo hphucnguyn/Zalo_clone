@@ -95,6 +95,67 @@ public class ConversationRepository {
         }
     }
 
+    public long createGroup(long ownerId, String name, long createdAt) {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement insert = connection.prepareStatement(
+                    "INSERT INTO conversations (type, name, owner_id, created_at) VALUES ('GROUP', ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+                insert.setString(1, name);
+                insert.setLong(2, ownerId);
+                insert.setLong(3, createdAt);
+                insert.executeUpdate();
+                try (ResultSet keys = insert.getGeneratedKeys()) {
+                    if (!keys.next()) throw new SQLException("Group insert returned no id");
+                    long id = keys.getLong(1);
+                    addMember(connection, id, ownerId, "OWNER", createdAt);
+                    connection.commit();
+                    return id;
+                }
+            } catch (SQLException | RuntimeException exception) {
+                connection.rollback();
+                throw exception;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Could not create group", exception);
+        }
+    }
+
+    public boolean isOwner(long conversationId, long userId) {
+        String sql = "SELECT 1 FROM conversation_members WHERE conversation_id = ? AND user_id = ? AND role = 'OWNER'";
+        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, conversationId); statement.setLong(2, userId);
+            try (ResultSet result = statement.executeQuery()) { return result.next(); }
+        } catch (SQLException exception) { throw new IllegalStateException("Could not check group owner", exception); }
+    }
+
+    public void addGroupMember(long conversationId, long userId, long joinedAt) {
+        try (Connection connection = dataSource.getConnection()) { addMember(connection, conversationId, userId, "MEMBER", joinedAt); }
+        catch (SQLException exception) { if ("23505".equals(exception.getSQLState())) return; throw new IllegalStateException("Could not add group member", exception); }
+    }
+
+    public void removeGroupMember(long conversationId, long userId) {
+        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                "DELETE FROM conversation_members WHERE conversation_id = ? AND user_id = ?")) {
+            statement.setLong(1, conversationId); statement.setLong(2, userId); statement.executeUpdate();
+        } catch (SQLException exception) { throw new IllegalStateException("Could not remove group member", exception); }
+    }
+
+    public boolean isGroup(long conversationId) {
+        try (Connection connection = dataSource.getConnection(); PreparedStatement statement = connection.prepareStatement(
+                "SELECT 1 FROM conversations WHERE id = ? AND type = 'GROUP'")) {
+            statement.setLong(1, conversationId);
+            try (ResultSet result = statement.executeQuery()) { return result.next(); }
+        } catch (SQLException exception) { throw new IllegalStateException("Could not check group", exception); }
+    }
+
+    private static void addMember(Connection connection, long conversationId, long userId, String role, long joinedAt) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO conversation_members (conversation_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)")) {
+            statement.setLong(1, conversationId); statement.setLong(2, userId); statement.setString(3, role); statement.setLong(4, joinedAt);
+            statement.executeUpdate();
+        }
+    }
+
     private static OptionalLong findDirect(Connection connection, long firstUserId, long secondUserId) throws SQLException {
         String sql = """
                 SELECT c.id

@@ -20,6 +20,13 @@ public final class MessageService {
     private final MessageRepository messageRepository;
     private final ReceiptRepository receiptRepository;
 
+    /** Compatibility constructor for non-persistent receipt test doubles. */
+    public MessageService(ConversationRepository conversationRepository, MessageRepository messageRepository) {
+        this.conversationRepository = Objects.requireNonNull(conversationRepository, "conversationRepository must not be null");
+        this.messageRepository = Objects.requireNonNull(messageRepository, "messageRepository must not be null");
+        this.receiptRepository = null;
+    }
+
     public MessageService(ConversationRepository conversationRepository, MessageRepository messageRepository, ReceiptRepository receiptRepository) {
         this.conversationRepository = Objects.requireNonNull(conversationRepository, "conversationRepository must not be null");
         this.messageRepository = Objects.requireNonNull(messageRepository, "messageRepository must not be null");
@@ -34,7 +41,9 @@ public final class MessageService {
         long sentAt = TimeUtil.nowEpochMillis();
         long messageId = messageRepository.insertText(conversationId, sender.id(), content, sentAt);
         long[] recipients = conversationRepository.memberIds(conversationId);
-        receiptRepository.createSentReceipts(messageId, sender.id(), recipients);
+        if (receiptRepository != null) {
+            receiptRepository.createSentReceipts(messageId, sender.id(), recipients);
+        }
         MessageDto message = new MessageDto(messageId, conversationId, sender.id(), sender.displayName(), content, sentAt);
         return new SavedMessage(message, recipients);
     }
@@ -45,8 +54,12 @@ public final class MessageService {
         if (senderId == recipientId || !conversationRepository.isMember(conversationId, recipientId)) {
             throw new UnauthorizedConversationException();
         }
-        receiptRepository.markDelivered(messageId, recipientId, TimeUtil.nowEpochMillis());
+        if (receiptRepository != null) receiptRepository.markDelivered(messageId, recipientId, TimeUtil.nowEpochMillis());
         return new ReceiptUpdate(messageId, conversationId, senderId, recipientId, MessageStatus.DELIVERED);
+    }
+
+    public boolean receiptTrackingEnabled() {
+        return receiptRepository != null;
     }
 
     public ReceiptUpdate markSeen(long messageId, long conversationId, long recipientId) {
@@ -55,7 +68,7 @@ public final class MessageService {
         if (senderId == recipientId || !conversationRepository.isMember(conversationId, recipientId)) {
             throw new UnauthorizedConversationException();
         }
-        receiptRepository.markSeen(messageId, recipientId, TimeUtil.nowEpochMillis());
+        if (receiptRepository != null) receiptRepository.markSeen(messageId, recipientId, TimeUtil.nowEpochMillis());
         return new ReceiptUpdate(messageId, conversationId, senderId, recipientId, MessageStatus.SEEN);
     }
 

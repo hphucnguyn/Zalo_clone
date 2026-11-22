@@ -18,6 +18,14 @@
                 <TextField fx:id="recipientUsernameField" onAction="#openDirect" promptText="Username người muốn chat" HBox.hgrow="ALWAYS" />
                 <Button fx:id="openDirectButton" mnemonicParsing="false" onAction="#openDirect" text="Mở chat 1-1" />
             </HBox>
+            <HBox spacing="8.0">
+                <TextField fx:id="groupNameField" onAction="#createGroup" promptText="Tên nhóm mới" HBox.hgrow="ALWAYS" />
+                <Button fx:id="createGroupButton" mnemonicParsing="false" onAction="#createGroup" text="Tạo nhóm" />
+            </HBox>
+            <HBox spacing="8.0">
+                <TextField fx:id="memberUsernameField" onAction="#addMember" promptText="Username thêm vào nhóm đang mở" HBox.hgrow="ALWAYS" />
+                <Button fx:id="addMemberButton" mnemonicParsing="false" onAction="#addMember" text="Thêm thành viên" />
+            </HBox>
             <Label fx:id="statusLabel" />
             <Label fx:id="offlineBanner" style="-fx-background-color: #fff3cd; -fx-padding: 8px; -fx-text-fill: #664d03;" text="Đang offline — lịch sử cục bộ vẫn khả dụng." />
             <Label fx:id="conversationLabel" style="-fx-font-weight: bold;" text="Chưa chọn hội thoại" />

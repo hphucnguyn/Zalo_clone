@@ -42,7 +42,8 @@ public final class ServerMain {
                                  new ConversationRepository(database.dataSource()),
                                  new MessageRepository(database.dataSource()),
                                  new ReceiptRepository(database.dataSource())),
-                         new ConversationRepository(database.dataSource()))) {
+                         new ConversationRepository(database.dataSource()),
+                         new UserRepository(database.dataSource()))) {
                 LOGGER.info("DB connected, schema ready");
                 LOGGER.info("TLS context loaded");
                 chatServer.start();

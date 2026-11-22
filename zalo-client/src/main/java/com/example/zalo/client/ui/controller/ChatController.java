@@ -54,11 +54,12 @@ public final class ChatController {
         loadOlderButton.setDisable(true);
         chatClient.addMessageConsumer(this::receiveMessage);
         chatClient.addStatusConsumer(ignored -> UiThread.run(messagesView::refresh));
+        chatClient.addPresenceConsumer(ignored -> UiThread.run(this::refreshConversationHeader));
     }
 
     public void showConversation(ConversationDto conversation) {
         activeConversation = conversation;
-        conversationLabel.setText("Đang chat với " + conversation.counterpart().displayName());
+        refreshConversationHeader();
         visibleMessages.clear();
         sendButton.setDisable(false);
         loadOlderButton.setDisable(true);
@@ -137,5 +138,15 @@ public final class ChatController {
         if (!visibleMessages.isEmpty()) {
             messagesView.scrollTo(visibleMessages.getLast());
         }
+    }
+
+    private void refreshConversationHeader() {
+        if (activeConversation == null) return;
+        if ("GROUP".equals(activeConversation.type())) {
+            conversationLabel.setText("Nhóm: " + activeConversation.name());
+            return;
+        }
+        boolean online = chatClient.isOnline(activeConversation.counterpart().id());
+        conversationLabel.setText((online ? "● " : "○ ") + "Đang chat với " + activeConversation.counterpart().displayName());
     }
 }

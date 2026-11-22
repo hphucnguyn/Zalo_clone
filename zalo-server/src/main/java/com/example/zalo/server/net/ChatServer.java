@@ -10,11 +10,13 @@ import com.example.zalo.server.handler.ConversationHandler;
 import com.example.zalo.server.handler.ChatHandler;
 import com.example.zalo.server.handler.HistoryHandler;
 import com.example.zalo.server.handler.MarkSeenHandler;
+import com.example.zalo.server.handler.GroupHandler;
 import com.example.zalo.server.service.AuthService;
 import com.example.zalo.server.service.ConversationService;
 import com.example.zalo.server.service.MessageService;
 import com.example.zalo.server.service.PresenceService;
 import com.example.zalo.server.repository.ConversationRepository;
+import com.example.zalo.server.service.GroupService;
 import com.example.zalo.server.session.SessionRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +43,7 @@ public final class ChatServer implements AutoCloseable {
     private final SessionRegistry sessionRegistry = new SessionRegistry();
     private final PacketWriter packetWriter = new PacketWriter();
     private final PacketDispatcher dispatcher;
+    private final PresenceService presenceService;
     private final ExecutorService clientExecutor;
     private final ExecutorService acceptExecutor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean running = new AtomicBoolean();
@@ -67,14 +70,25 @@ public final class ChatServer implements AutoCloseable {
             ConversationService conversationService,
             MessageService messageService,
             ConversationRepository presenceConversationRepository) {
+        this(config, sslContext, authService, conversationService, messageService, presenceConversationRepository, null);
+    }
+
+    public ChatServer(
+            ServerConfig config,
+            SSLContext sslContext,
+            AuthService authService,
+            ConversationService conversationService,
+            MessageService messageService,
+            ConversationRepository presenceConversationRepository,
+            com.example.zalo.server.repository.UserRepository userRepository) {
         this.config = Objects.requireNonNull(config, "config must not be null");
         this.sslContext = Objects.requireNonNull(sslContext, "sslContext must not be null");
         Objects.requireNonNull(authService, "authService must not be null");
-        PresenceService presenceService = presenceConversationRepository == null ? null
+        this.presenceService = presenceConversationRepository == null ? null
                 : new PresenceService(sessionRegistry, presenceConversationRepository, packetWriter);
         PacketDispatcher packetDispatcher = new PacketDispatcher(packetWriter)
                 .register(MessageType.REGISTER, new RegisterHandler(authService, packetWriter))
-                .register(MessageType.LOGIN, new LoginHandler(authService, packetWriter, presenceService))
+                .register(MessageType.LOGIN, new LoginHandler(authService, packetWriter, this.presenceService))
                 .register(MessageType.PING, new PingHandler(packetWriter));
         if (conversationService != null && messageService != null) {
             packetDispatcher
@@ -82,6 +96,15 @@ public final class ChatServer implements AutoCloseable {
                     .register(MessageType.SEND_MESSAGE, new ChatHandler(messageService, sessionRegistry, packetWriter))
                     .register(MessageType.HISTORY_REQUEST, new HistoryHandler(messageService, packetWriter))
                     .register(MessageType.MARK_SEEN, new MarkSeenHandler(messageService, sessionRegistry, packetWriter));
+            if (presenceConversationRepository != null && userRepository != null) {
+                GroupHandler groupHandler = new GroupHandler(
+                        new GroupService(presenceConversationRepository, userRepository),
+                        presenceConversationRepository, sessionRegistry, packetWriter);
+                packetDispatcher.register(MessageType.CREATE_GROUP, groupHandler)
+                        .register(MessageType.ADD_MEMBER, groupHandler)
+                        .register(MessageType.REMOVE_MEMBER, groupHandler)
+                        .register(MessageType.LEAVE_GROUP, groupHandler);
+            }
         }
         this.dispatcher = packetDispatcher;
         this.clientExecutor = Executors.newFixedThreadPool(config.maxClients());

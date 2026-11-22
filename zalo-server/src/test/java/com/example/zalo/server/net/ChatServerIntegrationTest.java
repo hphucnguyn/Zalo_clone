@@ -6,6 +6,7 @@ import com.example.zalo.common.util.JsonUtil;
 import com.example.zalo.server.config.ServerConfig;
 import com.example.zalo.server.config.SslContextFactory;
 import com.example.zalo.server.repository.UserRepository;
+import com.example.zalo.common.model.UserDto;
 import com.example.zalo.server.repository.ConversationRepository;
 import com.example.zalo.server.repository.MessageRepository;
 import com.example.zalo.server.security.LoginAttemptLimiter;
@@ -223,8 +224,8 @@ class ChatServerIntegrationTest {
 
             write(alice, JsonUtil.toJson(Packet.of(MessageType.SEND_MESSAGE, "send-1", Map.of(
                     "conversationId", conversationId, "content", "Xin chào Bob!"))));
-            Packet senderDelivery = JsonUtil.fromJson(read(alice));
-            Packet recipientDelivery = JsonUtil.fromJson(read(bob));
+            Packet senderDelivery = readUntilType(alice, MessageType.MESSAGE);
+            Packet recipientDelivery = readUntilType(bob, MessageType.MESSAGE);
             assertEquals(MessageType.MESSAGE, senderDelivery.type());
             assertEquals(MessageType.MESSAGE, recipientDelivery.type());
             assertEquals(aliceId, recipientDelivery.data().path("senderId").asLong());
@@ -238,7 +239,7 @@ class ChatServerIntegrationTest {
             await(() -> server.sessionRegistry().findByUserId(bobId).isEmpty());
             write(alice, JsonUtil.toJson(Packet.of(MessageType.SEND_MESSAGE, "send-2", Map.of(
                     "conversationId", conversationId, "content", "Tin nhắn khi Bob offline"))));
-            Packet offlineDelivery = JsonUtil.fromJson(read(alice));
+            Packet offlineDelivery = readUntilType(alice, MessageType.MESSAGE);
             assertEquals(MessageType.MESSAGE, offlineDelivery.type());
             assertEquals("Tin nhắn khi Bob offline", offlineDelivery.data().path("content").asText());
             assertEquals(2, messages.count());
@@ -286,6 +287,33 @@ class ChatServerIntegrationTest {
         }
     }
 
+    @Test
+    void groupMessageReachesAllThreeMembersAndRemovedMemberStopsReceiving() throws Exception {
+        startServer();
+        try (SSLSocket alice = tlsSocket(); SSLSocket bob = tlsSocket(); SSLSocket cam = tlsSocket()) {
+            alice.startHandshake(); bob.startHandshake(); cam.startHandshake();
+            long aliceId = registerAndLogin(alice, "alice_group", "Alice");
+            long bobId = registerAndLogin(bob, "bob_group", "Bob");
+            registerAndLogin(cam, "cam_group", "Cam");
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.CREATE_GROUP, "create", Map.of("name", "Study"))));
+            long groupId = JsonUtil.fromJson(read(alice)).data().path("conversation").path("id").asLong();
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.ADD_MEMBER, "add-bob", Map.of("conversationId", groupId, "username", "bob_group"))));
+            read(alice); read(alice); read(bob);
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.ADD_MEMBER, "add-cam", Map.of("conversationId", groupId, "username", "cam_group"))));
+            read(alice); read(alice); read(bob); read(cam);
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.SEND_MESSAGE, "group-message", Map.of("conversationId", groupId, "content", "hello group"))));
+            assertEquals(MessageType.MESSAGE, readUntilType(alice, MessageType.MESSAGE).type());
+            assertEquals("hello group", readUntilType(bob, MessageType.MESSAGE).data().path("content").asText());
+            assertEquals("hello group", readUntilType(cam, MessageType.MESSAGE).data().path("content").asText());
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.REMOVE_MEMBER, "remove-bob", Map.of("conversationId", groupId, "userId", bobId))));
+            read(alice); read(cam);
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.SEND_MESSAGE, "second", Map.of("conversationId", groupId, "content", "after remove"))));
+            readUntilType(alice, MessageType.MESSAGE);
+            assertEquals("after remove", readUntilType(cam, MessageType.MESSAGE).data().path("content").asText());
+            assertNoMessage(bob);
+        }
+    }
+
     private void startServer() throws IOException {
         ServerConfig config = new ServerConfig(
                 "127.0.0.1",
@@ -306,7 +334,7 @@ class ChatServerIntegrationTest {
                 new PasswordHasher(config.auth().bcryptRounds()),
                 new LoginAttemptLimiter(config.auth().maxLoginAttempts(), config.auth().lockDuration())),
                 new ConversationService(users, conversations),
-                new MessageService(conversations, messages));
+                new MessageService(conversations, messages), conversations, users);
         server.start();
     }
 
@@ -358,6 +386,30 @@ class ChatServerIntegrationTest {
         return new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)).readLine();
     }
 
+    private static Packet readUntilType(SSLSocket socket, MessageType type) throws IOException {
+        long deadline = System.nanoTime() + Duration.ofSeconds(3).toNanos();
+        while (System.nanoTime() < deadline) {
+            Packet packet = JsonUtil.fromJson(read(socket));
+            if (packet.type() == type) return packet;
+        }
+        throw new java.net.SocketTimeoutException("Timed out waiting for " + type);
+    }
+
+    private static void assertNoMessage(SSLSocket socket) throws IOException {
+        long deadline = System.nanoTime() + Duration.ofMillis(500).toNanos();
+        while (System.nanoTime() < deadline) {
+            try {
+                socket.setSoTimeout((int) Math.max(1, (deadline - System.nanoTime()) / 1_000_000));
+                Packet packet = JsonUtil.fromJson(new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8)).readLine());
+                if (packet.type() == MessageType.MESSAGE) {
+                    throw new AssertionError("Removed member received a group message");
+                }
+            } catch (java.net.SocketTimeoutException expected) {
+                return;
+            }
+        }
+    }
+
     private static void await(Condition condition) throws Exception {
         long deadline = System.nanoTime() + Duration.ofSeconds(3).toNanos();
         while (!condition.matches()) {
@@ -386,6 +438,10 @@ class ChatServerIntegrationTest {
             return Optional.ofNullable(users.get(username));
         }
 
+        @Override public Optional<UserDto> findPublicByUsername(String username) {
+            return findByUsername(username).map(a -> new UserDto(a.id(), a.username(), a.displayName(), a.avatarPath(), false));
+        }
+
         @Override
         public UserAccount create(String username, String passwordHash, String displayName, long createdAt) {
             UserAccount account = new UserAccount(ids.incrementAndGet(), username, passwordHash, displayName, null);
@@ -400,6 +456,7 @@ class ChatServerIntegrationTest {
         private final AtomicLong ids = new AtomicLong();
         private final Map<Set<Long>, Long> conversations = new ConcurrentHashMap<>();
         private final Map<Long, Set<Long>> members = new ConcurrentHashMap<>();
+        private final Map<Long, Long> owners = new ConcurrentHashMap<>();
 
         private InMemoryConversationRepository() {
             super(mock(DataSource.class));
@@ -422,6 +479,15 @@ class ChatServerIntegrationTest {
         public long[] memberIds(long conversationId) {
             return members.getOrDefault(conversationId, Set.of()).stream().mapToLong(Long::longValue).toArray();
         }
+
+        @Override public long createGroup(long ownerId, String name, long createdAt) {
+            long id = ids.incrementAndGet(); members.put(id, ConcurrentHashMap.newKeySet()); members.get(id).add(ownerId); owners.put(id, ownerId); return id;
+        }
+        @Override public boolean isGroup(long conversationId) { return owners.containsKey(conversationId); }
+        @Override public boolean isOwner(long conversationId, long userId) { return java.util.Objects.equals(owners.get(conversationId), userId); }
+        @Override public void addGroupMember(long conversationId, long userId, long joinedAt) { members.computeIfAbsent(conversationId, ignored -> ConcurrentHashMap.newKeySet()).add(userId); }
+        @Override public void removeGroupMember(long conversationId, long userId) { members.getOrDefault(conversationId, Set.of()).remove(userId); }
+        @Override public long[] relatedUserIds(long userId) { return members.values().stream().filter(set -> set.contains(userId)).flatMap(Set::stream).filter(id -> id != userId).mapToLong(Long::longValue).distinct().toArray(); }
     }
 
     private static final class InMemoryMessageRepository extends MessageRepository {
