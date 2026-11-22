@@ -51,13 +51,31 @@ public final class MessageCache implements AutoCloseable {
         return submit(() -> {
             try (Connection connection = connect();
                  PreparedStatement statement = connection.prepareStatement("""
-                         INSERT INTO cached_conversations (id, type, name, updated_at) VALUES (?, ?, ?, ?)
-                         ON CONFLICT(id) DO UPDATE SET type = excluded.type, name = excluded.name, updated_at = excluded.updated_at
+                         INSERT INTO cached_conversations (
+                             id, type, name, counterpart_id, counterpart_username,
+                             counterpart_display_name, updated_at
+                         ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                         ON CONFLICT(id) DO UPDATE SET
+                             type = excluded.type,
+                             name = excluded.name,
+                             counterpart_id = excluded.counterpart_id,
+                             counterpart_username = excluded.counterpart_username,
+                             counterpart_display_name = excluded.counterpart_display_name,
+                             updated_at = excluded.updated_at
                          """)) {
                 statement.setLong(1, conversation.id());
                 statement.setString(2, conversation.type());
                 statement.setString(3, conversation.counterpart() == null ? conversation.name() : conversation.counterpart().displayName());
-                statement.setLong(4, System.currentTimeMillis());
+                if (conversation.counterpart() == null) {
+                    statement.setNull(4, java.sql.Types.BIGINT);
+                    statement.setNull(5, java.sql.Types.VARCHAR);
+                    statement.setNull(6, java.sql.Types.VARCHAR);
+                } else {
+                    statement.setLong(4, conversation.counterpart().id());
+                    statement.setString(5, conversation.counterpart().username());
+                    statement.setString(6, conversation.counterpart().displayName());
+                }
+                statement.setLong(7, System.currentTimeMillis());
                 statement.executeUpdate();
             }
             return null;
@@ -68,16 +86,32 @@ public final class MessageCache implements AutoCloseable {
         return submit(() -> {
             try (Connection connection = connect();
                  PreparedStatement statement = connection.prepareStatement(
-                         "SELECT id, type, name, updated_at FROM cached_conversations ORDER BY updated_at DESC")) {
+                     """
+                     SELECT id, type, name, counterpart_id, counterpart_username,
+                            counterpart_display_name, updated_at
+                     FROM cached_conversations ORDER BY updated_at DESC
+                     """)) {
                 try (ResultSet result = statement.executeQuery()) {
                     List<ConversationDto> list = new ArrayList<>();
                     while (result.next()) {
                         long id = result.getLong("id");
                         String type = result.getString("type");
                         String name = result.getString("name");
-                        com.example.zalo.common.model.UserDto counterpart = "DIRECT".equalsIgnoreCase(type)
-                                ? new com.example.zalo.common.model.UserDto(id, name, name, null, false)
-                                : null;
+                    com.example.zalo.common.model.UserDto counterpart = null;
+                    if ("DIRECT".equalsIgnoreCase(type)) {
+                        long counterpartId = result.getLong("counterpart_id");
+                        if (result.wasNull()) {
+                            counterpartId = id;
+                        }
+                        String username = result.getString("counterpart_username");
+                        String displayName = result.getString("counterpart_display_name");
+                        counterpart = new com.example.zalo.common.model.UserDto(
+                                counterpartId,
+                                username != null ? username : name,
+                                displayName != null ? displayName : name,
+                                null,
+                                false);
+                    }
                         list.add(new ConversationDto(id, type, name, counterpart));
                     }
                     return list;
@@ -172,8 +206,25 @@ public final class MessageCache implements AutoCloseable {
                     statement.execute(fragment);
                 }
             }
+            ensureConversationColumn(connection, "counterpart_id", "INTEGER");
+            ensureConversationColumn(connection, "counterpart_username", "TEXT");
+            ensureConversationColumn(connection, "counterpart_display_name", "TEXT");
         } catch (SQLException exception) {
             throw new IllegalStateException("Could not initialize local message cache", exception);
+        }
+    }
+
+    private void ensureConversationColumn(Connection connection, String columnName, String columnType) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("PRAGMA table_info(cached_conversations)");
+             ResultSet result = statement.executeQuery()) {
+            while (result.next()) {
+                if (columnName.equalsIgnoreCase(result.getString("name"))) {
+                    return;
+                }
+            }
+        }
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE cached_conversations ADD COLUMN " + columnName + " " + columnType);
         }
     }
 

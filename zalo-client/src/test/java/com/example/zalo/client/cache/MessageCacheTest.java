@@ -1,6 +1,8 @@
 package com.example.zalo.client.cache;
 
+import com.example.zalo.common.model.ConversationDto;
 import com.example.zalo.common.model.MessageDto;
+import com.example.zalo.common.model.UserDto;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -11,6 +13,29 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class MessageCacheTest {
+
+    @Test
+    void persistsDirectConversationCounterpartIdentity() throws Exception {
+        Path directory = Files.createTempDirectory("zalo-cache-conversation-test-");
+        ConversationDto conversation = new ConversationDto(
+                7,
+                "DIRECT",
+                null,
+                new UserDto(42, "abc", "ABC", null, true));
+
+        try (MessageCache cache = MessageCache.open(directory, "an", 100)) {
+            cache.saveConversation(conversation).get(3, TimeUnit.SECONDS);
+        }
+
+        try (MessageCache reopened = MessageCache.open(directory, "an", 100)) {
+            List<ConversationDto> conversations =
+                    reopened.loadConversations().get(3, TimeUnit.SECONDS);
+            assertEquals(1, conversations.size());
+            assertEquals(42L, conversations.get(0).counterpart().id());
+            assertEquals("abc", conversations.get(0).counterpart().username());
+            assertEquals("ABC", conversations.get(0).counterpart().displayName());
+        }
+    }
 
     @Test
     void persistsHistoryAcrossReopenAndDoesNotDuplicateSyncedMessages() throws Exception {

@@ -3,6 +3,9 @@ CREATE TABLE IF NOT EXISTS cached_conversations (
   id         INTEGER PRIMARY KEY,               -- id cua server
   type       TEXT NOT NULL,                     -- DIRECT | GROUP
   name       TEXT,
+  counterpart_id INTEGER,
+  counterpart_username TEXT,
+  counterpart_display_name TEXT,
   updated_at INTEGER NOT NULL
 );
 
