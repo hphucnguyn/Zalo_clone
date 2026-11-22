@@ -278,6 +278,11 @@ public final class MessageCache implements AutoCloseable {
     @Override
     public void close() {
         executor.shutdown();
+        try {
+            executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @FunctionalInterface

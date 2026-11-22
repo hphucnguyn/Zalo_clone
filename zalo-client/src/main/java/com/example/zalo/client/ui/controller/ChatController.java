@@ -60,11 +60,6 @@ public final class ChatController {
     public void showConversation(ConversationDto conversation) {
         activeConversation = conversation;
         refreshConversationHeader();
-        if (conversation.counterpart() != null) {
-            chatClient.requestPresence(
-                    conversation.counterpart().id(),
-                    conversation.counterpart().username());
-        }
         visibleMessages.clear();
         sendButton.setDisable(false);
         loadOlderButton.setDisable(true);

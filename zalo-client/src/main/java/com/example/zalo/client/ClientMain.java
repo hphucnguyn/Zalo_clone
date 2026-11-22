@@ -112,6 +112,7 @@ public final class ClientMain extends Application {
     }
 
     public void logout() {
+        chatClient.resetSession();
         if (messageCache != null) {
             try {
                 messageCache.close();
@@ -119,6 +120,7 @@ public final class ClientMain extends Application {
             }
             messageCache = null;
         }
+        tcpClient.resetConnection();
         showLoginScreen();
     }
 

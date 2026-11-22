@@ -150,4 +150,21 @@ public final class TcpClient implements AutoCloseable {
         }
         receiveExecutor.shutdownNow();
     }
+
+    public synchronized void resetConnection() {
+        closeForReconnect();
+    }
+
+    private synchronized void closeForReconnect() {
+        SSLSocket currentSocket = socket;
+        socket = null;
+        packetSender = null;
+        state.set(ConnectionState.DISCONNECTED);
+        if (currentSocket != null) {
+            try {
+                currentSocket.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
 }

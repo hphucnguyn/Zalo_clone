@@ -34,7 +34,6 @@ public enum MessageType {
     HISTORY_REQUEST("history_request"),
     HISTORY_RESPONSE("history_response"),
     PRESENCE("presence"),
-    PRESENCE_REQUEST("presence_request"),
     MARK_SEEN("mark_seen"),
     MESSAGE_STATUS("message_status"),
     PING("ping"),
