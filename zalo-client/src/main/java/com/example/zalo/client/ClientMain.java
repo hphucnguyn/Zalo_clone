@@ -5,6 +5,7 @@ import com.example.zalo.client.config.TrustStoreLoader;
 import com.example.zalo.client.net.TcpClient;
 import com.example.zalo.client.service.AuthClient;
 import com.example.zalo.client.service.ChatClient;
+import com.example.zalo.client.service.FriendClient;
 import com.example.zalo.client.cache.MessageCache;
 import com.example.zalo.client.ui.controller.LoginController;
 import com.example.zalo.client.ui.controller.RegisterController;
@@ -24,6 +25,7 @@ public final class ClientMain extends Application {
     private Stage stage;
     private ChatClient chatClient;
     private AuthClient authClient;
+    private FriendClient friendClient;
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -32,6 +34,7 @@ public final class ClientMain extends Application {
         tcpClient = new TcpClient(config, TrustStoreLoader.load(config));
         authClient = new AuthClient(tcpClient);
         chatClient = new ChatClient(tcpClient);
+        friendClient = new FriendClient(tcpClient);
 
         showLoginScreen();
     }
@@ -92,7 +95,7 @@ public final class ClientMain extends Application {
             FXMLLoader loader = new FXMLLoader(ClientMain.class.getResource("/fxml/main.fxml"));
             loader.setControllerFactory(type -> {
                 if (type == MainController.class) {
-                    return new MainController(chatClient, tcpClient, user, this::logout);
+                    return new MainController(chatClient, tcpClient, user, this::logout, friendClient);
                 }
                 throw new IllegalArgumentException("Unsupported FXML controller: " + type.getName());
             });

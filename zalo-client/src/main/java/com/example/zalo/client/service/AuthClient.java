@@ -28,10 +28,15 @@ public final class AuthClient {
     }
 
     public CompletableFuture<AuthResponse> register(String username, String password, String displayName) {
+        return register(username, password, displayName, "");
+    }
+
+    public CompletableFuture<AuthResponse> register(String username, String password, String displayName, String phoneNumber) {
         return send(MessageType.REGISTER, Map.of(
                 "username", username,
                 "password", password,
-                "displayName", displayName));
+                "displayName", displayName,
+                "phoneNumber", phoneNumber));
     }
 
     public CompletableFuture<AuthResponse> login(String username, String password) {

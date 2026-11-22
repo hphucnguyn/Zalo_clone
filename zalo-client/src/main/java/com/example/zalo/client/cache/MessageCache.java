@@ -64,6 +64,30 @@ public final class MessageCache implements AutoCloseable {
         });
     }
 
+    public CompletableFuture<List<ConversationDto>> loadConversations() {
+        return submit(() -> {
+            try (Connection connection = connect();
+                 PreparedStatement statement = connection.prepareStatement(
+                         "SELECT id, type, name, updated_at FROM cached_conversations ORDER BY updated_at DESC")) {
+                try (ResultSet result = statement.executeQuery()) {
+                    List<ConversationDto> list = new ArrayList<>();
+                    while (result.next()) {
+                        long id = result.getLong("id");
+                        String type = result.getString("type");
+                        String name = result.getString("name");
+                        com.example.zalo.common.model.UserDto counterpart = "DIRECT".equalsIgnoreCase(type)
+                                ? new com.example.zalo.common.model.UserDto(id, name, name, null, false)
+                                : null;
+                        list.add(new ConversationDto(id, type, name, counterpart));
+                    }
+                    return list;
+                }
+            } catch (SQLException exception) {
+                return List.of();
+            }
+        });
+    }
+
     public CompletableFuture<Void> saveMessages(List<MessageDto> messages) {
         List<MessageDto> copy = List.copyOf(messages);
         return submit(() -> {

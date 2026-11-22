@@ -123,6 +123,14 @@ public final class ChatClient {
         });
     }
 
+    public CompletableFuture<List<ConversationDto>> loadCachedConversations() {
+        MessageCache cache = messageCache;
+        if (cache == null) {
+            return CompletableFuture.completedFuture(List.of());
+        }
+        return cache.loadConversations();
+    }
+
     public CompletableFuture<HistoryPage> syncNewMessages(long conversationId, int limit) {
         MessageCache cache = messageCache;
         if (cache == null) {

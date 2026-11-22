@@ -20,6 +20,7 @@ public final class RegisterController {
 
     @FXML private TextField usernameField;
     @FXML private TextField displayNameField;
+    @FXML private TextField phoneNumberField;
     @FXML private PasswordField passwordField;
     @FXML private PasswordField confirmPasswordField;
     @FXML private CheckBox termsCheckBox;
@@ -40,12 +41,19 @@ public final class RegisterController {
     private void handleRegister() {
         String username = usernameField.getText() == null ? "" : usernameField.getText().trim();
         String displayName = displayNameField.getText() == null ? "" : displayNameField.getText().trim();
+        String phoneNumber = phoneNumberField.getText() == null ? "" : phoneNumberField.getText().trim();
         String password = passwordField.getText() == null ? "" : passwordField.getText();
         String confirmPassword = confirmPasswordField.getText() == null ? "" : confirmPasswordField.getText();
 
-        if (username.isEmpty() || displayName.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+        if (username.isEmpty() || displayName.isEmpty() || phoneNumber.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
             statusLabel.setStyle("-fx-text-fill: #e53935;");
             statusLabel.setText("Vui lòng điền đầy đủ tất cả các trường.");
+            return;
+        }
+
+        if (!phoneNumber.matches("\\+[1-9][0-9]{7,14}")) {
+            statusLabel.setStyle("-fx-text-fill: #e53935;");
+            statusLabel.setText("Số điện thoại cần ở dạng quốc tế, ví dụ +84901234567.");
             return;
         }
 
@@ -71,7 +79,7 @@ public final class RegisterController {
         statusLabel.setStyle("-fx-text-fill: #3c4043;");
         statusLabel.setText("Đang đăng ký tài khoản...");
 
-        authClient.register(username, password, displayName).whenComplete((response, exception) -> UiThread.run(() -> {
+        authClient.register(username, password, displayName, phoneNumber).whenComplete((response, exception) -> UiThread.run(() -> {
             registerButton.setDisable(false);
             if (exception != null) {
                 statusLabel.setStyle("-fx-text-fill: #e53935;");

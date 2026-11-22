@@ -16,6 +16,7 @@ public record AuthResult(boolean successful, UserDto user, Failure failure) {
     public enum Failure {
         INVALID_REGISTRATION,
         USERNAME_UNAVAILABLE,
+        PHONE_UNAVAILABLE,
         INVALID_CREDENTIALS,
         TEMPORARILY_LOCKED
     }

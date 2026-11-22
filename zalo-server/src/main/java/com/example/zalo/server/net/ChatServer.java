@@ -11,6 +11,8 @@ import com.example.zalo.server.handler.ChatHandler;
 import com.example.zalo.server.handler.HistoryHandler;
 import com.example.zalo.server.handler.MarkSeenHandler;
 import com.example.zalo.server.handler.GroupHandler;
+import com.example.zalo.server.handler.FriendHandler;
+import com.example.zalo.server.repository.FriendRepository;
 import com.example.zalo.server.service.AuthService;
 import com.example.zalo.server.service.ConversationService;
 import com.example.zalo.server.service.MessageService;
@@ -105,6 +107,15 @@ public final class ChatServer implements AutoCloseable {
                         .register(MessageType.REMOVE_MEMBER, groupHandler)
                         .register(MessageType.LEAVE_GROUP, groupHandler);
             }
+        }
+        if (userRepository != null) {
+            FriendHandler friendHandler = new FriendHandler(userRepository,
+                    new FriendRepository(userRepository.dataSource(), userRepository), sessionRegistry, packetWriter);
+            packetDispatcher.register(MessageType.SEARCH_USER_BY_PHONE, friendHandler)
+                    .register(MessageType.SEND_FRIEND_REQUEST, friendHandler)
+                    .register(MessageType.LIST_FRIENDS, friendHandler)
+                    .register(MessageType.LIST_FRIEND_REQUESTS, friendHandler)
+                    .register(MessageType.RESPOND_FRIEND_REQUEST, friendHandler);
         }
         this.dispatcher = packetDispatcher;
         this.clientExecutor = Executors.newFixedThreadPool(config.maxClients());

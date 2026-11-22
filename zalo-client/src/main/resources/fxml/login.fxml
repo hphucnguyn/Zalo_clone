@@ -64,7 +64,7 @@
             <Label text="Tên đăng nhập" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #444;"/>
             <Region prefHeight="6"/>
             <TextField fx:id="usernameField"
-                       promptText="Ví dụ: linh_nguyen"
+                       promptText="Ví dụ: abc"
                        styleClass="text-field"
                        maxWidth="Infinity"/>
             <Region prefHeight="20"/>

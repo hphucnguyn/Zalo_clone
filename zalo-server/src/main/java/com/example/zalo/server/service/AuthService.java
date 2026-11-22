@@ -26,14 +26,16 @@ public final class AuthService {
         this.loginAttemptLimiter = Objects.requireNonNull(loginAttemptLimiter, "loginAttemptLimiter must not be null");
     }
 
-    public AuthResult register(String usernameInput, String passwordInput, String displayNameInput) {
+    public AuthResult register(String usernameInput, String passwordInput, String displayNameInput, String phoneInput) {
         final String username;
         final String password;
         final String displayName;
+        final String phoneNumber;
         try {
             username = InputValidator.username(usernameInput);
             password = InputValidator.registrationPassword(passwordInput);
             displayName = InputValidator.displayName(displayNameInput);
+            phoneNumber = phoneInput == null || phoneInput.isBlank() ? null : InputValidator.phoneNumber(phoneInput);
         } catch (IllegalArgumentException exception) {
             return AuthResult.failure(AuthResult.Failure.INVALID_REGISTRATION);
         }
@@ -43,10 +45,12 @@ public final class AuthService {
         }
         try {
             UserRepository.UserAccount account = userRepository.create(
-                    username, passwordHasher.hash(password), displayName, TimeUtil.nowEpochMillis());
+                    username, passwordHasher.hash(password), displayName, phoneNumber, TimeUtil.nowEpochMillis());
             return AuthResult.success(toUserDto(account));
         } catch (UserRepository.UsernameAlreadyExistsException exception) {
             return AuthResult.failure(AuthResult.Failure.USERNAME_UNAVAILABLE);
+        } catch (UserRepository.PhoneAlreadyExistsException exception) {
+            return AuthResult.failure(AuthResult.Failure.PHONE_UNAVAILABLE);
         }
     }
 

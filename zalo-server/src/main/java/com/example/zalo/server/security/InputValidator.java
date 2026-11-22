@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 public final class InputValidator {
 
     private static final Pattern USERNAME = Pattern.compile("[a-zA-Z0-9_]{3,50}");
+    private static final Pattern PHONE = Pattern.compile("\\+[1-9][0-9]{7,14}");
 
     private InputValidator() {
     }
@@ -37,6 +38,15 @@ public final class InputValidator {
         String normalized = value == null ? "" : value.trim();
         if (normalized.isEmpty() || normalized.length() > 100) {
             throw new IllegalArgumentException("Display name must contain 1-100 characters");
+        }
+        return normalized;
+    }
+
+    /** Accepts exact international numbers such as +84901234567. */
+    public static String phoneNumber(String value) {
+        String normalized = value == null ? "" : value.replaceAll("[\\s().-]", "");
+        if (!PHONE.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("Phone number must use international format, for example +84901234567");
         }
         return normalized;
     }

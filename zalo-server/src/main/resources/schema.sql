@@ -69,3 +69,17 @@ CREATE TABLE IF NOT EXISTS message_receipts (
   seen_at      BIGINT,
   PRIMARY KEY (message_id, user_id)
 );
+
+-- Phone lookup and friendship requests
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone_number ON users (phone_number) WHERE phone_number IS NOT NULL;
+CREATE TABLE IF NOT EXISTS friend_requests (
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  sender_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  receiver_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(10) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','ACCEPTED','REJECTED')),
+  created_at BIGINT NOT NULL,
+  responded_at BIGINT,
+  CHECK (sender_id <> receiver_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_friend_requests_pending_pair ON friend_requests (LEAST(sender_id, receiver_id), GREATEST(sender_id, receiver_id)) WHERE status = 'PENDING';

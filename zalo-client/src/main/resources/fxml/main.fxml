@@ -34,33 +34,28 @@
         <StackPane fx:id="navAvatarBtn" prefWidth="60" prefHeight="50" style="-fx-cursor: hand;" onMouseClicked="#openProfile">
             <Circle radius="19" fill="#ffffff" opacity="0.25"/>
             <Label fx:id="welcomeLabel" text="U" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: white;"/>
-            <tooltip><Tooltip text="Hồ sơ tài khoản"/></tooltip>
         </StackPane>
 
         <Separator style="-fx-background-color: rgba(255,255,255,0.20); -fx-pref-height: 1;" maxWidth="36"/>
 
         <!-- 1. Chat Nav -->
-        <StackPane fx:id="navChatBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn, active" onMouseClicked="#navChat">
+        <StackPane fx:id="navChatBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn" onMouseClicked="#navChat">
             <Label text="💬" style="-fx-font-size: 20px;"/>
-            <tooltip><Tooltip text="Tin nhắn (Chat)"/></tooltip>
         </StackPane>
 
         <!-- 2. Contacts Nav -->
         <StackPane fx:id="navContactsBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn" onMouseClicked="#navContacts">
             <Label text="👥" style="-fx-font-size: 20px;"/>
-            <tooltip><Tooltip text="Danh bạ"/></tooltip>
         </StackPane>
 
         <!-- 3. To-do Nav -->
         <StackPane fx:id="navTodoBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn" onMouseClicked="#navTodo">
             <Label text="✅" style="-fx-font-size: 20px;"/>
-            <tooltip><Tooltip text="To-do (Giao việc)"/></tooltip>
         </StackPane>
 
         <!-- 4. Cloud Nav -->
         <StackPane fx:id="navCloudBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn" onMouseClicked="#navCloud">
             <Label text="☁" style="-fx-font-size: 20px;"/>
-            <tooltip><Tooltip text="Cloud của tôi"/></tooltip>
         </StackPane>
 
         <Region VBox.vgrow="ALWAYS"/>
@@ -68,7 +63,6 @@
         <!-- 5. Settings Nav -->
         <StackPane fx:id="navSettingsBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn" onMouseClicked="#openSettings">
             <Label text="⚙" style="-fx-font-size: 20px;"/>
-            <tooltip><Tooltip text="Cài đặt"/></tooltip>
         </StackPane>
     </VBox>
 
@@ -112,7 +106,7 @@
 
                 <!-- Filter chips -->
                 <HBox spacing="6" style="-fx-padding: 8 12 4 12; -fx-border-color: transparent transparent #f0f0f0 transparent; -fx-border-width: 0 0 1 0;">
-                    <Button text="Tất cả" styleClass="filter-chip, active"/>
+                    <Button text="Tất cả" styleClass="filter-chip"/>
                     <Button text="Chưa đọc" styleClass="filter-chip"/>
                     <Button text="Nhóm" styleClass="filter-chip"/>
                 </HBox>
@@ -251,29 +245,15 @@
                         <!-- Media / Files Section -->
                         <VBox spacing="8">
                             <Label text="ẢNH &amp; VIDEO" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #888;"/>
-                            <HBox spacing="6">
-                                <StackPane prefWidth="70" prefHeight="70" style="-fx-background-color: #e0e8ff; -fx-background-radius: 6;">
-                                    <Label text="🖼" style="-fx-font-size: 20px;"/>
-                                </StackPane>
-                                <StackPane prefWidth="70" prefHeight="70" style="-fx-background-color: #fee2e2; -fx-background-radius: 6;">
-                                    <Label text="🎥" style="-fx-font-size: 20px;"/>
-                                </StackPane>
-                                <StackPane prefWidth="70" prefHeight="70" style="-fx-background-color: #f3f4f6; -fx-background-radius: 6;">
-                                    <Label text="+12" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #666;"/>
-                                </StackPane>
-                            </HBox>
+                            <VBox fx:id="infoMediaContainer" spacing="6">
+                                <Label text="Chưa có ảnh/video nào." style="-fx-font-size: 11px; -fx-text-fill: #aaa;"/>
+                            </VBox>
                         </VBox>
 
                         <VBox spacing="8">
                             <Label text="FILE &amp; TÀI LIỆU" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #888;"/>
-                            <VBox spacing="6">
-                                <HBox spacing="8" alignment="CENTER_LEFT" style="-fx-background-color: #f9fafb; -fx-padding: 8; -fx-background-radius: 6;">
-                                    <Label text="📄" style="-fx-font-size: 18px;"/>
-                                    <VBox>
-                                        <Label text="Bao_cao_tuan.pdf" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #333;"/>
-                                        <Label text="1.8 MB · 20/11/2026" style="-fx-font-size: 10px; -fx-text-fill: #999;"/>
-                                    </VBox>
-                                </HBox>
+                            <VBox fx:id="infoFilesContainer" spacing="6">
+                                <Label text="Chưa có tài liệu hoặc file nào." style="-fx-font-size: 11px; -fx-text-fill: #aaa;"/>
                             </VBox>
                         </VBox>
                     </VBox>
@@ -288,13 +268,13 @@
                   style="-fx-background-color: #ffffff; -fx-border-color: transparent #e8e8e8 transparent transparent; -fx-border-width: 0 1 0 0; -fx-padding: 12;">
                 <Label text="Danh bạ" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #111;"/>
                 <Region prefHeight="14"/>
-                <Button fx:id="subContactsFriendsBtn" text="👥  Danh sách bạn bè" maxWidth="Infinity" alignment="CENTER_LEFT"
+                <Button fx:id="subContactsFriendsBtn" text="👥  Danh sách bạn bè" onAction="#showFriendsList" maxWidth="Infinity" alignment="CENTER_LEFT"
                         style="-fx-background-color: #e8f0fe; -fx-text-fill: #0068ff; -fx-font-weight: bold; -fx-padding: 10 12; -fx-background-radius: 8; -fx-cursor: hand;"/>
                 <Region prefHeight="6"/>
-                <Button fx:id="subContactsGroupsBtn" text="👨‍👩‍👧‍👦  Danh sách nhóm" maxWidth="Infinity" alignment="CENTER_LEFT"
+                <Button fx:id="subContactsGroupsBtn" text="👨‍👩‍👧‍👦  Danh sách nhóm" onAction="#showGroupsList" maxWidth="Infinity" alignment="CENTER_LEFT"
                         style="-fx-background-color: transparent; -fx-text-fill: #444; -fx-padding: 10 12; -fx-background-radius: 8; -fx-cursor: hand;"/>
                 <Region prefHeight="6"/>
-                <Button fx:id="subContactsRequestsBtn" text="📩  Lời mời kết bạn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                <Button fx:id="subContactsRequestsBtn" text="📩  Lời mời kết bạn" onAction="#showRequestsList" maxWidth="Infinity" alignment="CENTER_LEFT"
                         style="-fx-background-color: transparent; -fx-text-fill: #444; -fx-padding: 10 12; -fx-background-radius: 8; -fx-cursor: hand;"/>
             </VBox>
 
@@ -308,7 +288,7 @@
                         <TextField fx:id="contactSearchField" promptText="Tìm bạn bè..." onAction="#handleFilterContacts"
                                    style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 13px; -fx-padding: 0;"/>
                     </HBox>
-                    <Button text="+ Thêm bạn mới" onAction="#openDirectFromContacts" styleClass="button-primary"/>
+                    <Button text="+ Thêm bạn mới" onAction="#searchPhoneAndAddFriend" styleClass="button-primary"/>
                 </HBox>
 
                 <Region prefHeight="16"/>
@@ -329,7 +309,7 @@
             <Region prefHeight="14"/>
             <!-- Filter Bar -->
             <HBox spacing="8">
-                <Button text="Tất cả việc" styleClass="filter-chip, active"/>
+                <Button text="Tất cả việc" styleClass="filter-chip"/>
                 <Button text="Tôi giao" styleClass="filter-chip"/>
                 <Button text="Cần làm" styleClass="filter-chip"/>
                 <Button text="Đã hoàn thành" styleClass="filter-chip"/>

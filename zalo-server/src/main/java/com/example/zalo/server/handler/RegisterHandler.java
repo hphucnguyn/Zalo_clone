@@ -27,7 +27,8 @@ public final class RegisterHandler implements PacketHandler {
         AuthResult result = authService.register(
                 packet.data().path("username").asText(null),
                 packet.data().path("password").asText(null),
-                packet.data().path("displayName").asText(null));
+                packet.data().path("displayName").asText(null),
+                packet.data().path("phoneNumber").asText(null));
         if (result.successful()) {
             packetWriter.write(session, Packet.of(MessageType.REGISTER_RESULT, packet.requestId(), Map.of(
                     "success", true,
