@@ -94,7 +94,7 @@ public final class ChatServer implements AutoCloseable {
                 .register(MessageType.PING, new PingHandler(packetWriter));
         if (conversationService != null && messageService != null) {
             packetDispatcher
-                    .register(MessageType.OPEN_DIRECT, new ConversationHandler(conversationService, packetWriter))
+                    .register(MessageType.OPEN_DIRECT, new ConversationHandler(conversationService, packetWriter, this.presenceService))
                     .register(MessageType.SEND_MESSAGE, new ChatHandler(messageService, sessionRegistry, packetWriter))
                     .register(MessageType.HISTORY_REQUEST, new HistoryHandler(messageService, packetWriter))
                     .register(MessageType.MARK_SEEN, new MarkSeenHandler(messageService, sessionRegistry, packetWriter));

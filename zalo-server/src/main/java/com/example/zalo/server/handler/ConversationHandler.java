@@ -6,6 +6,7 @@ import com.example.zalo.common.protocol.MessageType;
 import com.example.zalo.common.protocol.Packet;
 import com.example.zalo.server.net.PacketWriter;
 import com.example.zalo.server.service.ConversationService;
+import com.example.zalo.server.service.PresenceService;
 import com.example.zalo.server.session.ClientSession;
 
 import java.io.IOException;
@@ -17,10 +18,12 @@ public final class ConversationHandler implements PacketHandler {
 
     private final ConversationService conversationService;
     private final PacketWriter packetWriter;
+    private final PresenceService presenceService;
 
-    public ConversationHandler(ConversationService conversationService, PacketWriter packetWriter) {
+    public ConversationHandler(ConversationService conversationService, PacketWriter packetWriter, PresenceService presenceService) {
         this.conversationService = Objects.requireNonNull(conversationService, "conversationService must not be null");
         this.packetWriter = Objects.requireNonNull(packetWriter, "packetWriter must not be null");
+        this.presenceService = presenceService;
     }
 
     @Override
@@ -31,6 +34,9 @@ public final class ConversationHandler implements PacketHandler {
             packetWriter.write(session, Packet.of(MessageType.DIRECT_OPENED, packet.requestId(), Map.of(
                     "success", true,
                     "conversation", conversation)));
+            if (presenceService != null) {
+                presenceService.sendPresence(session, conversation.counterpart());
+            }
         } catch (ConversationService.ConversationNotFoundException exception) {
             packetWriter.write(session, Packet.of(MessageType.DIRECT_OPENED, packet.requestId(), Map.of(
                     "success", false,

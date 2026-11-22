@@ -56,4 +56,14 @@ public final class PresenceService {
             }
         }
     }
+
+    public void sendPresence(ClientSession session, UserDto user) {
+        boolean online = !sessionRegistry.findByUserId(user.id()).isEmpty();
+        try {
+            packetWriter.write(session, Packet.of(MessageType.PRESENCE, null, java.util.Map.of(
+                    "userId", user.id(), "online", online)));
+        } catch (IOException exception) {
+            sessionRegistry.unregister(session);
+        }
+    }
 }

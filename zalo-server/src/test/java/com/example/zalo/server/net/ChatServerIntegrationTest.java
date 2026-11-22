@@ -208,6 +208,26 @@ class ChatServerIntegrationTest {
     }
 
     @Test
+    void openingDirectConversationReportsCounterpartPresence() throws Exception {
+        startServer();
+        try (SSLSocket alice = tlsSocket(); SSLSocket bob = tlsSocket()) {
+            alice.startHandshake();
+            bob.startHandshake();
+            registerAndLogin(alice, "alice_presence", "Alice");
+            long bobId = registerAndLogin(bob, "bob_presence", "Bob");
+
+            write(alice, JsonUtil.toJson(Packet.of(MessageType.OPEN_DIRECT, "open-presence", Map.of(
+                    "username", "bob_presence"))));
+            Packet opened = JsonUtil.fromJson(read(alice));
+            assertEquals(MessageType.DIRECT_OPENED, opened.type());
+
+            Packet presence = readUntilType(alice, MessageType.PRESENCE);
+            assertEquals(bobId, presence.data().path("userId").asLong());
+            assertEquals(true, presence.data().path("online").asBoolean());
+        }
+    }
+
+    @Test
     void directMessageIsSavedBeforeDeliveryAndOfflineRecipientDoesNotPreventSaving() throws Exception {
         startServer();
         try (SSLSocket alice = tlsSocket(); SSLSocket bob = tlsSocket()) {
@@ -255,18 +275,19 @@ class ChatServerIntegrationTest {
             registerAndLogin(alice, "alice_history", "Alice");
             registerAndLogin(bob, "bob_history", "Bob");
             write(alice, JsonUtil.toJson(Packet.of(MessageType.OPEN_DIRECT, "open-history", Map.of("username", "bob_history"))));
-            long conversationId = JsonUtil.fromJson(read(alice)).data().path("conversation").path("id").asLong();
+            Packet opened = readUntilType(alice, MessageType.DIRECT_OPENED);
+            long conversationId = opened.data().path("conversation").path("id").asLong();
 
             for (int index = 1; index <= 3; index++) {
                 write(alice, JsonUtil.toJson(Packet.of(MessageType.SEND_MESSAGE, "send-history-" + index, Map.of(
                         "conversationId", conversationId, "content", "message-" + index))));
-                read(alice);
-                read(bob);
+                readUntilType(alice, MessageType.MESSAGE);
+                readUntilType(bob, MessageType.MESSAGE);
             }
 
             write(alice, JsonUtil.toJson(Packet.of(MessageType.HISTORY_REQUEST, "latest", Map.of(
                     "conversationId", conversationId, "limit", 2))));
-            Packet latest = JsonUtil.fromJson(read(alice));
+            Packet latest = readUntilType(alice, MessageType.HISTORY_RESPONSE);
             assertEquals(MessageType.HISTORY_RESPONSE, latest.type());
             assertEquals(true, latest.data().path("hasMore").asBoolean());
             assertEquals("message-2", latest.data().path("messages").get(0).path("content").asText());
