@@ -107,9 +107,9 @@ Giao diện được thiết kế hiện đại theo phong cách Zalo, chia làm
 
 ---
 
-## 5. Cấu hình Ứng dụng (`client.properties`)
+## 5. Hướng dẫn Cấu hình Client (`client.properties`)
 
-Đường dẫn: `zalo-client/src/main/resources/client.properties`
+File cấu hình đặt tại: `zalo-client/src/main/resources/client.properties`
 
 ```properties
 # ===== Địa chỉ kết nối Server =====
@@ -143,6 +143,74 @@ ui.timeFormat=HH:mm
 ui.dateFormat=dd/MM/yyyy
 ui.historyPageSize=50
 ```
+
+### 5.1 Giải thích chi tiết các thuộc tính kết nối
+
+| Thuộc tính | Kiểu dữ liệu | Mặc định | Ý nghĩa & Hướng dẫn thiết lập |
+|---|:---:|:---:|---|
+| `server.host` | String | `127.0.0.1` | **Địa chỉ IP hoặc tên miền của Server.**<br>• Khi chạy cùng máy: để `127.0.0.1` hoặc `localhost`.<br>• Khi chạy trong mạng LAN: đổi thành IP của máy chủ (ví dụ: `192.168.1.15`).<br>• Khi chạy qua Internet: đổi thành Public IP hoặc Domain (ví dụ: `chat.mydomain.com`). |
+| `server.port` | Integer | `5000` | **Cổng TCP lắng nghe của Server.**<br>Phải khớp với thông số `server.port` trong file `server.properties` của máy chủ. |
+| `connect.timeoutMillis` | Integer | `5000` | **Thời gian chờ tối đa khi thiết lập kết nối TCP** (tính bằng mili-giây). Nếu mạng chập chờn hoặc kết nối qua Internet từ xa, có thể tăng lên `10000` (10s). |
+| `tls.truststore.path` | String | `certificates/server.crt` | **Đường dẫn tới file chứng chỉ công khai của Server.**<br>Lớp `ClientConfig` tự động tìm kiếm cả ở `certificates/server.crt` hoặc `zalo-client/certificates/server.crt`. |
+| `tls.protocols` | String | `TLSv1.3,TLSv1.2` | Danh sách phiên bản TLS chấp nhận cho handshake. Không khuyến nghị thay đổi. |
+| `tls.expectedHost` | String | `localhost` | ⚠️ **CỰC KỲ QUAN TRỌNG:** Tên hostname hoặc IP kỳ vọng trong chứng chỉ TLS của Server.<br>Lớp `ServerCertificateValidator` sẽ so khớp giá trị này với trường `CN` (Common Name) hoặc `SAN` (Subject Alternative Name) của `server.crt`.<br>**Quy tắc:** Nếu bạn kết nối tới IP `192.168.1.15`, bạn **bắt buộc** phải sinh chứng chỉ với IP đó và đặt `tls.expectedHost=192.168.1.15`. Nếu không khớp, kết nối sẽ bị hủy với lỗi `Certificate hostname does not match`. |
+| `cache.enabled` | Boolean | `true` | Bật (`true`) hoặc tắt (`false`) tính năng lưu trữ tin nhắn vào SQLite cục bộ để xem offline. |
+| `cache.dir` | String | `data/cache` | Thư mục lưu các file database cache SQLite (`<username>.db`). |
+| `cache.maxMessagesPerConversation` | Integer | `2000` | Số lượng tin nhắn tối đa được giữ lại trong bộ nhớ cache cho mỗi cuộc trò chuyện. |
+
+---
+
+### 5.2 Hướng dẫn cấu hình theo từng tình huống cụ thể
+
+#### 📌 Tình huống 1: Chạy Server và Client trên CÙNG MỘT MÁY (Mặc định)
+Không cần chỉnh sửa gì thêm! Thiết lập mặc định đã sẵn sàng:
+```properties
+server.host=127.0.0.1
+server.port=5000
+tls.expectedHost=localhost
+tls.truststore.path=certificates/server.crt
+```
+Chứng chỉ được sinh bằng lệnh:
+```bash
+./scripts/gen-certs.sh localhost   # hoặc scripts\gen-certs.bat localhost trên Windows
+```
+
+---
+
+#### 📌 Tình huống 2: Chạy Client trên máy khác trong cùng MẠNG LAN / WIFI
+Ví dụ: Máy chủ có IP nội bộ là `192.168.1.20`, Máy client muốn kết nối tới:
+
+1. **Tại máy Server:**
+   - Sinh chứng chỉ TLS có chứa IP của máy chủ:
+     ```bash
+     # Trên Windows (Server):
+     set CHAT_CERT_PASSWORD=MatKhauCuaBan && scripts\gen-certs.bat 192.168.1.20
+     # Trên Linux/macOS (Server):
+     export CHAT_CERT_PASSWORD=MatKhauCuaBan && ./scripts/gen-certs.sh 192.168.1.20
+     ```
+   - Mở cổng `5000` trên tường lửa (Windows Firewall / iptables).
+2. **Tại máy Client:**
+   - Copy file `zalo-client/certificates/server.crt` từ máy Server sang thư mục `zalo-client/certificates/server.crt` của máy Client.
+   - Sửa file `zalo-client/src/main/resources/client.properties`:
+     ```properties
+     server.host=192.168.1.20
+     server.port=5000
+     tls.expectedHost=192.168.1.20
+     tls.truststore.path=certificates/server.crt
+     ```
+   - Chạy lệnh khởi động client:
+     ```bash
+     mvn -pl zalo-client javafx:run
+     ```
+
+---
+
+#### 📌 Tình huống 3: Server đổi sang cổng khác (Ví dụ: `5050`)
+1. Trên Server (`server.properties`): Sửa `server.port=5050`.
+2. Trên Client (`client.properties`): Sửa `server.port=5050`.
+
+> 💡 **Lưu ý sau khi sửa file cấu hình:**
+> Vì file `client.properties` nằm trong thư mục tài nguyên (`src/main/resources`), khi chạy bằng lệnh `mvn -pl zalo-client javafx:run`, Maven sẽ tự động nạp phiên bản mới nhất vào thư mục biên dịch `target/classes`. Nếu sử dụng IDE (IntelliJ IDEA), hãy chọn **Rebuild Module** hoặc chạy lại ứng dụng để cấu hình mới có hiệu lực.
 
 ---
 

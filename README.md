@@ -225,6 +225,25 @@ Nếu Server ở **Máy A** (`192.168.1.50`) và Client ở **Máy B**:
 
 ---
 
+### 5.4 Hướng dẫn Chi tiết Cấu hình `client.properties` để Kết nối Server
+
+File cấu hình Client đặt tại: [`zalo-client/src/main/resources/client.properties`](zalo-client/src/main/resources/client.properties).
+
+#### Bảng thông số kết nối quan trọng:
+
+| Thuộc tính | Giá trị mặc định | Giải thích & Cách cấu hình |
+|---|:---:|---|
+| `server.host` | `127.0.0.1` | **Địa chỉ IP/Hostname của Server.** Đổi thành IP LAN (vd: `192.168.1.50`) hoặc Domain nếu chạy khác máy. |
+| `server.port` | `5000` | **Cổng TCP lắng nghe của Server.** Phải trùng với `server.port` của `server.properties`. |
+| `tls.truststore.path` | `certificates/server.crt` | **Đường dẫn tới chứng chỉ công khai của Server.** Tự động tìm cả ở thư mục gốc và thư mục module. |
+| `tls.expectedHost` | `localhost` | ⚠️ **BẮT BUỘC KHỚP VỚI CHỨNG CHỈ:** Hostname hoặc IP mà Client mong đợi thấy trong CN/SAN của chứng chỉ TLS. Nếu đổi `server.host` sang IP LAN thì `tls.expectedHost` cũng phải đổi thành IP đó và chứng chỉ phải được sinh kèm IP đó. |
+| `connect.timeoutMillis` | `5000` | Thời gian chờ tối đa khi bắt đầu bắt tay mạng TCP (ms). |
+| `cache.enabled` | `true` | Bật/tắt lưu trữ tin nhắn vào SQLite cục bộ (`data/cache/<user>.db`) để xem offline. |
+
+> 📌 Xem hướng dẫn chi tiết từng tình huống cụ thể (Localhost, LAN, đổi cổng) tại tài liệu riêng: **[zalo-client/README.md](zalo-client/README.md#5-hướng-dẫn-cấu-hình-client-clientproperties)**.
+
+---
+
 ## 6. Hướng dẫn DevOps & Hạ tầng Container
 
 ### 6.1 Quản lý Dịch vụ Database (PostgreSQL)
