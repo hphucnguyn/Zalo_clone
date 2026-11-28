@@ -516,11 +516,6 @@ public final class MainController {
     }
 
     @FXML
-    private void handleVideoCall() {
-        showInfoAlert("Cuộc gọi video", "Tính năng gọi video yêu cầu camera/webcam và luồng RTP.");
-    }
-
-    @FXML
     private void handlePinMessage() {
         statusLabel.setStyle("-fx-text-fill: #2e7d32;");
         statusLabel.setText("Đã ghim tin nhắn vào đầu hội thoại.");
