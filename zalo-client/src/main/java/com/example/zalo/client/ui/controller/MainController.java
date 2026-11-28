@@ -17,15 +17,7 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TextInputDialog;
-import javafx.scene.control.Tooltip;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -33,9 +25,12 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import javafx.stage.FileChooser;
+import javafx.scene.layout.GridPane;
+import javafx.stage.Popup;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.Optional;
 
 /**
  * Main window controller with 100% REAL data:
@@ -83,6 +78,7 @@ public final class MainController {
     @FXML private Label statusLabel;
     @FXML private Label offlineBanner;
     @FXML private ListView<ConversationDto> conversationsView;
+    @FXML private Button btnEmoji;
 
     @FXML private Label topbarAvatarIcon;
     @FXML private Label conversationLabel;
@@ -198,8 +194,19 @@ public final class MainController {
             contactsListView.refresh();
         }));
 
-        chatClient.addMessageConsumer(msg -> UiThread.run(() -> {
-            conversationsView.refresh();
+                chatClient.addMessageConsumer(msg -> UiThread.run(() -> {
+            // 1. Cập nhật lại danh sách hội thoại bên trái
+            chatClient.loadCachedConversations().thenAccept(loaded -> UiThread.run(() -> {
+                conversations.setAll(loaded);
+                conversationsView.refresh();
+            }));
+
+            // 2. Nếu đang mở đúng hội thoại nhận tin, tự động load tin nhắn mới
+            if (chatController.activeConversation() != null && 
+                chatController.activeConversation().id() == msg.conversationId()) {
+                chatController.loadOlder(); 
+            }
+
             if (infoPanel != null && infoPanel.isVisible()) {
                 updateInfoPanelData();
             }
@@ -218,6 +225,12 @@ public final class MainController {
 
         // Setup Cloud ListView (starts empty for real user notes)
         setupCloudView();
+
+        //tự động chọn hội thoại đầu tiên khi vừa đăng nhập
+        if (!conversations.isEmpty()) {
+            conversationsView.getSelectionModel().select(0);
+            activateConversation(conversations.get(0));
+        }
     }
 
     // ── Tab Switching ──
@@ -470,6 +483,9 @@ public final class MainController {
         refreshPresence();
         statusLabel.setText("");
 
+        // THÊM DÒNG NÀY ĐỂ TỰ ĐỘNG TẢI TIN NHẮN CŨ LÊN KHUNG CHAT
+        chatController.loadOlder(); 
+
         boolean isGroup = "GROUP".equalsIgnoreCase(conversation.type());
         topbarAvatarIcon.setText(isGroup ? "👥" : "👤");
 
@@ -510,20 +526,99 @@ public final class MainController {
         statusLabel.setText("Đã ghim tin nhắn vào đầu hội thoại.");
     }
 
-    @FXML
+        @FXML
     private void handleInsertEmoji() {
-        messageField.setText(messageField.getText() + " 😊 ");
-        messageField.positionCaret(messageField.getText().length());
+        // 1. Tạo một cửa sổ nhỏ (Popup)
+        Popup popup = new Popup();
+        
+        // 2. Tạo một lưới (GridPane) để chứa các nút Emoji
+        GridPane emojiGrid = new GridPane();
+        emojiGrid.setHgap(5);
+        emojiGrid.setVgap(5);
+        emojiGrid.setStyle("-fx-padding: 10; -fx-background-color: white; -fx-border-color: #ccc; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 0);");
+
+        // 3. Danh sách các Emoji (bạn có thể thêm tùy thích)
+        String[] emojis = {"😀", "😂", "❤️", "👍", "😎", "😭", "😡", "🎉", "🔥", "🙏", 
+                           "😍", "🤔", "😅", "💔", "💯", "✨", "🥰", "😴", "🤩", "👏"};
+        
+        int col = 0;
+        int row = 0;
+        
+        // 4. Vòng lặp tạo nút cho từng Emoji
+        for (String emo : emojis) {
+            Button emojiBtn = new Button(emo);
+            emojiBtn.setStyle("-fx-font-size: 20px; -fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 5;");
+            
+            // Bấm vào emoji nào thì chèn vào ô chat
+            emojiBtn.setOnAction(e -> {
+                messageField.appendText(emo);
+                messageField.requestFocus(); // Đưa con trỏ về ô chat
+                popup.hide(); // Ẩn bảng emoji đi
+            });
+            
+            emojiGrid.add(emojiBtn, col, row);
+            col++;
+            if (col == 5) { // Cứ 5 con thì xuống dòng
+                col = 0;
+                row++;
+            }
+        }
+
+        // 5. Gắn lưới vào Popup
+        popup.getContent().add(emojiGrid);
+        
+        // 6. Hiển thị Popup ngay phía trên nút Emoji
+        if (btnEmoji != null && btnEmoji.getScene() != null && btnEmoji.getScene().getWindow() != null) {
+            popup.show(btnEmoji, 
+                       btnEmoji.localToScreen(0, 0).getX(), 
+                       btnEmoji.localToScreen(0, 0).getY() - 130); 
+        }
     }
+
+    // --- ĐÃ CẬP NHẬT: CÁC HÀM CHỌN FILE THỰC TẾ ---
 
     @FXML
     private void handleSendImage() {
-        showInfoAlert("Gửi hình ảnh", "Đã sẵn sàng. Chọn ảnh để gửi theo định dạng chuẩn.");
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Chọn ảnh để gửi");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
+        );
+        File selectedFile = fileChooser.showOpenDialog(null);
+        if (selectedFile != null) {
+            System.out.println("Đã chọn ảnh: " + selectedFile.getAbsolutePath());
+            showInfoAlert("Gửi hình ảnh", "Đã chọn ảnh: " + selectedFile.getName() + "\n(Chức năng gửi qua mạng đang phát triển)");
+        }
     }
 
     @FXML
     private void handleSendFile() {
-        showInfoAlert("Gửi file", "Đã sẵn sàng. Hỗ trợ gửi file qua socket TCP.");
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Chọn tệp tin để gửi");
+        File selectedFile = fileChooser.showOpenDialog(null);
+        if (selectedFile != null) {
+            System.out.println("Đã chọn file: " + selectedFile.getAbsolutePath());
+            showInfoAlert("Gửi file", "Đã chọn file: " + selectedFile.getName() + "\n(Chức năng gửi qua mạng đang phát triển)");
+        }
+    }
+
+    @FXML
+    private void handleSendVideo() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Chọn video để gửi");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Video Files", "*.mp4", "*.avi", "*.mkv")
+        );
+        File selectedFile = fileChooser.showOpenDialog(null);
+        if (selectedFile != null) {
+            System.out.println("Đã chọn video: " + selectedFile.getAbsolutePath());
+            showInfoAlert("Gửi video", "Đã chọn video: " + selectedFile.getName() + "\n(Chức năng gửi qua mạng đang phát triển)");
+        }
+    }
+
+    @FXML
+    private void handleRecordAudio() {
+        showInfoAlert("Tin nhắn thoại", "Chức năng thu âm đang được nhóm phát triển.");
     }
 
     @FXML
