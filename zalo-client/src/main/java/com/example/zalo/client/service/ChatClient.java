@@ -188,8 +188,33 @@ public final class ChatClient {
         }
     }
 
-    public List<MessageDto> messages(long conversationId) {
-        return List.copyOf(messagesByConversation.getOrDefault(conversationId, new CopyOnWriteArrayList<>()));
+        public List<MessageDto> messages(long conversationId) {
+        // 1. Lấy dữ liệu từ RAM (nếu có tin nhắn mới vừa gửi/nhận)
+        List<MessageDto> inMemory = messagesByConversation.getOrDefault(conversationId, new CopyOnWriteArrayList<>());
+        
+        // 2. Nếu RAM có dữ liệu, trả về luôn
+        if (!inMemory.isEmpty()) {
+            return List.copyOf(inMemory);
+        }
+        
+        // 3. Nếu RAM trống (vừa mới đăng nhập), đọc từ SQLite lên
+        MessageCache cache = this.messageCache;
+        if (cache != null) {
+            try {
+                // Gọi loadRecent và chờ kết quả (chờ tối đa 1 giây để không bị treo giao diện)
+                List<MessageDto> fromDb = cache.loadRecent(conversationId, 50).get(1, java.util.concurrent.TimeUnit.SECONDS);
+                if (!fromDb.isEmpty()) {
+                    // Lưu lại vào RAM để lần sau lấy cho nhanh
+                    mergeMessages(fromDb); 
+                    return fromDb;
+                }
+            } catch (Exception e) {
+                // Bỏ qua lỗi timeout để không treo app
+            }
+        }
+        
+        // 4. Nếu cả 2 đều rỗng, trả về danh sách rỗng
+        return List.of();
     }
 
     public void addMessageConsumer(Consumer<MessageDto> consumer) {

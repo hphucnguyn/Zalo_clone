@@ -23,117 +23,72 @@
     prefWidth="1180" prefHeight="700"
     style="-fx-background-color: #ffffff;">
 
-    <!-- ════════════════════════════════════════
-         1. LEFT ICON NAVIGATION SIDEBAR (60px)
-         ════════════════════════════════════════ -->
+    <!-- LEFT ICON NAVIGATION SIDEBAR -->
     <VBox alignment="TOP_CENTER" spacing="4"
           style="-fx-background-color: #0068ff; -fx-min-width: 60px; -fx-pref-width: 60px; -fx-max-width: 60px;">
         <padding><Insets top="12" bottom="12"/></padding>
-
-        <!-- User avatar button: opens Profile modal -->
         <StackPane fx:id="navAvatarBtn" prefWidth="60" prefHeight="50" style="-fx-cursor: hand;" onMouseClicked="#openProfile">
             <Circle radius="19" fill="#ffffff" opacity="0.25"/>
             <Label fx:id="welcomeLabel" text="U" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: white;"/>
         </StackPane>
-
         <Separator style="-fx-background-color: rgba(255,255,255,0.20); -fx-pref-height: 1;" maxWidth="36"/>
-
-        <!-- 1. Chat Nav -->
         <StackPane fx:id="navChatBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn" onMouseClicked="#navChat">
             <Label text="💬" style="-fx-font-size: 20px;"/>
         </StackPane>
-
-        <!-- 2. Contacts Nav -->
         <StackPane fx:id="navContactsBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn" onMouseClicked="#navContacts">
             <Label text="👥" style="-fx-font-size: 20px;"/>
         </StackPane>
-
-        <!-- 3. To-do Nav -->
         <StackPane fx:id="navTodoBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn" onMouseClicked="#navTodo">
             <Label text="✅" style="-fx-font-size: 20px;"/>
         </StackPane>
-
-        <!-- 4. Cloud Nav -->
         <StackPane fx:id="navCloudBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn" onMouseClicked="#navCloud">
             <Label text="☁" style="-fx-font-size: 20px;"/>
         </StackPane>
-
         <Region VBox.vgrow="ALWAYS"/>
-
-        <!-- 5. Settings Nav -->
         <StackPane fx:id="navSettingsBtn" prefWidth="60" prefHeight="48" styleClass="nav-icon-btn" onMouseClicked="#openSettings">
             <Label text="⚙" style="-fx-font-size: 20px;"/>
         </StackPane>
     </VBox>
 
-    <!-- ════════════════════════════════════════
-         CENTRAL CONTENT: STACKPANE FOR MULTI-TABS
-         ════════════════════════════════════════ -->
+    <!-- CENTRAL CONTENT -->
     <StackPane HBox.hgrow="ALWAYS">
-
-        <!-- ── TAB 1: CHAT VIEW (MẶC ĐỊNH) ── -->
+        <!-- TAB 1: CHAT VIEW -->
         <HBox fx:id="chatViewContainer" HBox.hgrow="ALWAYS" visible="true" managed="true">
-
-            <!-- A. Conversation List Panel (280px) -->
+            <!-- Conversation List Panel -->
             <VBox style="-fx-background-color: #ffffff; -fx-border-color: transparent #e8e8e8 transparent transparent; -fx-border-width: 0 1 0 0;"
                   minWidth="290" prefWidth="290" maxWidth="290">
-
-                <!-- Search & Actions -->
                 <VBox style="-fx-padding: 10 12 8 12; -fx-border-color: transparent transparent #f0f0f0 transparent; -fx-border-width: 0 0 1 0;">
-                    <HBox alignment="CENTER_LEFT" spacing="8"
-                          style="-fx-background-color: #f2f2f2; -fx-background-radius: 20; -fx-padding: 6 12;">
+                    <HBox alignment="CENTER_LEFT" spacing="8" style="-fx-background-color: #f2f2f2; -fx-background-radius: 20; -fx-padding: 6 12;">
                         <Label text="🔍" style="-fx-font-size: 13px; -fx-text-fill: #aaa;"/>
-                        <TextField fx:id="recipientUsernameField"
-                                   promptText="Tìm kiếm hoặc chat 1-1"
-                                   onAction="#openDirect"
-                                   style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 13px; -fx-padding: 0;"
-                                   HBox.hgrow="ALWAYS"/>
-                        <Button fx:id="openDirectButton" text="→" onAction="#openDirect"
-                                style="-fx-background-color: transparent; -fx-text-fill: #0068ff; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 14px;"/>
+                        <TextField fx:id="recipientUsernameField" promptText="Tìm kiếm hoặc chat 1-1" onAction="#openDirect"
+                                   style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 13px; -fx-padding: 0;" HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="openDirectButton" text="→" onAction="#openDirect" style="-fx-background-color: transparent; -fx-text-fill: #0068ff; -fx-font-weight: bold; -fx-cursor: hand; -fx-font-size: 14px;"/>
                     </HBox>
                     <Region prefHeight="8"/>
-                    <!-- Group create row -->
                     <HBox alignment="CENTER_LEFT" spacing="6">
-                        <TextField fx:id="groupNameField"
-                                   promptText="Tạo nhóm mới..."
-                                   onAction="#createGroup"
-                                   style="-fx-background-color: #f7f7f7; -fx-border-color: #e8e8e8; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 5 10; -fx-font-size: 12px;"
-                                   HBox.hgrow="ALWAYS"/>
+                        <TextField fx:id="groupNameField" promptText="Tạo nhóm mới..." onAction="#createGroup"
+                                   style="-fx-background-color: #f7f7f7; -fx-border-color: #e8e8e8; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 5 10; -fx-font-size: 12px;" HBox.hgrow="ALWAYS"/>
                         <Button fx:id="createGroupButton" text="+" onAction="#createGroup"
                                 style="-fx-background-color: #0068ff; -fx-text-fill: white; -fx-background-radius: 6; -fx-padding: 4 10; -fx-font-size: 14px; -fx-font-weight: bold; -fx-cursor: hand;"/>
                     </HBox>
                 </VBox>
-
-                <!-- Filter chips -->
                 <HBox spacing="6" style="-fx-padding: 8 12 4 12; -fx-border-color: transparent transparent #f0f0f0 transparent; -fx-border-width: 0 0 1 0;">
                     <Button text="Tất cả" styleClass="filter-chip"/>
                     <Button text="Chưa đọc" styleClass="filter-chip"/>
                     <Button text="Nhóm" styleClass="filter-chip"/>
                 </HBox>
-
-                <!-- Section label & status -->
                 <HBox alignment="CENTER_LEFT" style="-fx-padding: 8 12 4 12;">
                     <Label text="HỘI THOẠI" style="-fx-font-size: 11px; -fx-text-fill: #999; -fx-font-weight: bold;"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label fx:id="statusLabel" style="-fx-font-size: 10px; -fx-text-fill: #888;"/>
                 </HBox>
-
-                <!-- Offline banner -->
-                <Label fx:id="offlineBanner"
-                       text="⚠ Đang offline — lịch sử cục bộ vẫn khả dụng."
-                       styleClass="offline-banner"
-                       wrapText="true" maxWidth="Infinity" managed="false" visible="false"/>
-
-                <!-- Conversations ListView -->
+                <Label fx:id="offlineBanner" text="⚠ Đang offline — lịch sử cục bộ vẫn khả dụng." styleClass="offline-banner" wrapText="true" maxWidth="Infinity" managed="false" visible="false"/>
                 <ListView fx:id="conversationsView" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-border-color: transparent;"/>
             </VBox>
 
-            <!-- B. Main Chat Conversation Area -->
+            <!-- Main Chat Area -->
             <VBox HBox.hgrow="ALWAYS" style="-fx-background-color: #f5f5f5;">
-
-                <!-- Top bar -->
-                <HBox alignment="CENTER_LEFT" spacing="12"
-                      style="-fx-background-color: white; -fx-border-color: transparent transparent #e8e8e8 transparent; -fx-border-width: 0 0 1 0; -fx-min-height: 56px; -fx-pref-height: 56px; -fx-padding: 0 16;">
+                <HBox alignment="CENTER_LEFT" spacing="12" style="-fx-background-color: white; -fx-border-color: transparent transparent #e8e8e8 transparent; -fx-border-width: 0 0 1 0; -fx-min-height: 56px; -fx-pref-height: 56px; -fx-padding: 0 16;">
                     <StackPane>
                         <Circle radius="18" fill="#e0e8ff"/>
                         <Label fx:id="topbarAvatarIcon" text="💬" style="-fx-font-size: 16px;"/>
@@ -143,80 +98,59 @@
                         <Label fx:id="presenceLabel" text="" style="-fx-font-size: 12px; -fx-text-fill: #22c55e;"/>
                     </VBox>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <!-- Action buttons -->
-                    <Button text="📞" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 17px; -fx-padding: 4 6;" onAction="#handleCall">
-                        <tooltip><Tooltip text="Gọi thoại"/></tooltip>
-                    </Button>
-                    <Button text="📹" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 17px; -fx-padding: 4 6;" onAction="#handleVideoCall">
-                        <tooltip><Tooltip text="Gọi video"/></tooltip>
-                    </Button>
-                    <Button text="📌" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 17px; -fx-padding: 4 6;" onAction="#handlePinMessage">
-                        <tooltip><Tooltip text="Ghim tin nhắn"/></tooltip>
-                    </Button>
-                    <Button fx:id="addMemberButton" text="👥+" onAction="#toggleAddMemberBar"
-                            style="-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 14px; -fx-padding: 4 6; -fx-text-fill: #0068ff;">
-                        <tooltip><Tooltip text="Thêm thành viên vào nhóm"/></tooltip>
-                    </Button>
-                    <!-- Info Toggle Button -->
-                    <Button text="ℹ" onAction="#toggleInfoPanel"
-                            style="-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 4 6; -fx-text-fill: #555;">
-                        <tooltip><Tooltip text="Thông tin hội thoại"/></tooltip>
-                    </Button>
+                    <Button text="📞" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 17px; -fx-padding: 4 6;" onAction="#handleCall"><tooltip><Tooltip text="Gọi thoại"/></tooltip></Button>
+                    <Button text="📹" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 17px; -fx-padding: 4 6;" onAction="#handleVideoCall"><tooltip><Tooltip text="Gọi video"/></tooltip></Button>
+                    <Button text="📌" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 17px; -fx-padding: 4 6;" onAction="#handlePinMessage"><tooltip><Tooltip text="Ghim tin nhắn"/></tooltip></Button>
+                    <Button fx:id="addMemberButton" text="👥+" onAction="#toggleAddMemberBar" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 14px; -fx-padding: 4 6; -fx-text-fill: #0068ff;"><tooltip><Tooltip text="Thêm thành viên vào nhóm"/></tooltip></Button>
+                    <Button text="ℹ" onAction="#toggleInfoPanel" style="-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 18px; -fx-padding: 4 6; -fx-text-fill: #555;"><tooltip><Tooltip text="Thông tin hội thoại"/></tooltip></Button>
                 </HBox>
 
-                <!-- Add member row (collapsible) -->
-                <HBox fx:id="addMemberBar" spacing="8" alignment="CENTER_LEFT" managed="false" visible="false"
-                      style="-fx-background-color: #f8f9ff; -fx-padding: 6 16; -fx-border-color: transparent transparent #e8e8e8 transparent; -fx-border-width: 0 0 1 0;">
+                <HBox fx:id="addMemberBar" spacing="8" alignment="CENTER_LEFT" managed="false" visible="false" style="-fx-background-color: #f8f9ff; -fx-padding: 6 16; -fx-border-color: transparent transparent #e8e8e8 transparent; -fx-border-width: 0 0 1 0;">
                     <Label text="Thêm thành viên:" style="-fx-font-size: 12px; -fx-text-fill: #555;"/>
-                    <TextField fx:id="memberUsernameField" promptText="Username cần thêm" onAction="#addMember"
-                               style="-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 4 10; -fx-font-size: 12px;" HBox.hgrow="ALWAYS"/>
+                    <TextField fx:id="memberUsernameField" promptText="Username cần thêm" onAction="#addMember" style="-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 4 10; -fx-font-size: 12px;" HBox.hgrow="ALWAYS"/>
                     <Button text="Thêm" onAction="#addMember" styleClass="button-primary" style="-fx-padding: 4 12; -fx-font-size: 12px;"/>
                 </HBox>
 
-                <!-- Messages List -->
                 <ListView fx:id="messagesView" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 12 16;"/>
-
-                <!-- Load Older Button -->
                 <HBox alignment="CENTER" style="-fx-padding: 4 16 0 16;">
-                    <Button fx:id="loadOlderButton" text="⬆ Tải tin nhắn cũ hơn" onAction="#loadOlder"
-                            style="-fx-background-color: #f0f0f0; -fx-text-fill: #555; -fx-background-radius: 12; -fx-padding: 4 16; -fx-font-size: 12px; -fx-cursor: hand;"
-                            disable="true"/>
+                    <Button fx:id="loadOlderButton" text="⬆ Tải tin nhắn cũ hơn" onAction="#loadOlder" style="-fx-background-color: #f0f0f0; -fx-text-fill: #555; -fx-background-radius: 12; -fx-padding: 4 16; -fx-font-size: 12px; -fx-cursor: hand;" disable="true"/>
                 </HBox>
 
-                <!-- Input area -->
+                <!-- Input Area -->
                 <VBox style="-fx-background-color: white; -fx-border-color: #e8e8e8 transparent transparent transparent; -fx-border-width: 1 0 0 0; -fx-padding: 8 12 10 12;">
-                    <!-- Toolbar row -->
                     <HBox spacing="6" style="-fx-padding: 0 0 8 0; -fx-border-color: transparent transparent #f0f0f0 transparent; -fx-border-width: 0 0 1 0;">
-                        <Button text="😊" onAction="#handleInsertEmoji" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 2 4;">
-                            <tooltip><Tooltip text="Sticker &amp; Emoji"/></tooltip>
+                        <Button fx:id="btnEmoji" text="😊" onAction="#handleInsertEmoji" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 2 4;">
+                            <tooltip>
+                                <Tooltip text="Sticker &amp; Emoji"/>
+                            </tooltip>
                         </Button>
                         <Button text="🖼" onAction="#handleSendImage" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 2 4;">
-                            <tooltip><Tooltip text="Gửi hình ảnh"/></tooltip>
+                            <tooltip>
+                                <Tooltip text="Gửi hình ảnh"/>
+                            </tooltip>
                         </Button>
                         <Button text="📎" onAction="#handleSendFile" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 2 4;">
-                            <tooltip><Tooltip text="Gửi tài liệu/file"/></tooltip>
+                            <tooltip>
+                                <Tooltip text="Gửi tài liệu/file"/>
+                            </tooltip>
                         </Button>
-                        <Button text="📷" onAction="#handleScreenshot" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 2 4;">
-                            <tooltip><Tooltip text="Chụp ảnh màn hình"/></tooltip>
-                        </Button>
-                        <Button text="⏰" onAction="#handleReminder" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 2 4;">
-                            <tooltip><Tooltip text="Tạo nhắc hẹn"/></tooltip>
-                        </Button>
+                        <!-- NÚT VIDEO VÀ ÂM THANH MỚI THÊM -->
+                        <Button text="🎥" onAction="#handleSendVideo" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 2 4;"><tooltip><Tooltip text="Gửi Video"/></tooltip></Button>
+                        <Button text="🎤" onAction="#handleRecordAudio" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 2 4;"><tooltip><Tooltip text="Tin nhắn thoại"/></tooltip></Button>
+                        
+                        <Button text="📷" onAction="#handleScreenshot" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 2 4;"><tooltip><Tooltip text="Chụp ảnh màn hình"/></tooltip></Button>
+                        <Button text="⏰" onAction="#handleReminder" style="-fx-background-color: transparent; -fx-font-size: 18px; -fx-cursor: hand; -fx-padding: 2 4;"><tooltip><Tooltip text="Tạo nhắc hẹn"/></tooltip></Button>
                     </HBox>
-                    <!-- Text field + Send -->
                     <HBox spacing="8" alignment="CENTER">
-                        <TextField fx:id="messageField" promptText="Nhập tin nhắn..." onAction="#sendMessage"
-                                   style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 14px; -fx-padding: 6 0;"
-                                   HBox.hgrow="ALWAYS"/>
+                        <TextField fx:id="messageField" promptText="Nhập tin nhắn..." onAction="#sendMessage" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 14px; -fx-padding: 6 0;" HBox.hgrow="ALWAYS"/>
                         <Button text="👍" onAction="#handleQuickLike" style="-fx-background-color: transparent; -fx-font-size: 20px; -fx-cursor: hand; -fx-padding: 2 4;"/>
                         <Button fx:id="sendButton" text="➤" onAction="#sendMessage" styleClass="send-button" disable="true"/>
                     </HBox>
                 </VBox>
             </VBox>
 
-            <!-- C. Right Info Panel (Collapsible 280px) -->
-            <VBox fx:id="infoPanel" prefWidth="280" minWidth="280" maxWidth="280" managed="false" visible="false"
-                  style="-fx-background-color: white; -fx-border-color: transparent transparent transparent #e8e8e8; -fx-border-width: 0 0 0 1;">
+            <!-- Info Panel -->
+            <VBox fx:id="infoPanel" prefWidth="280" minWidth="280" maxWidth="280" managed="false" visible="false" style="-fx-background-color: white; -fx-border-color: transparent transparent transparent #e8e8e8; -fx-border-width: 0 0 0 1;">
                 <HBox alignment="CENTER_LEFT" style="-fx-padding: 14 16; -fx-border-color: transparent transparent #f0f0f0 transparent; -fx-border-width: 0 0 1 0;">
                     <Label text="Thông tin hội thoại" style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #111;"/>
                     <Region HBox.hgrow="ALWAYS"/>
@@ -224,135 +158,75 @@
                 </HBox>
                 <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent; -fx-border-color: transparent;">
                     <VBox spacing="14" style="-fx-padding: 16;">
-                        <!-- Avatar & Name -->
                         <VBox alignment="CENTER" spacing="6">
-                            <StackPane>
-                                <Circle radius="30" fill="#0068ff"/>
-                                <Label fx:id="infoAvatarLabel" text="Z" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: white;"/>
-                            </StackPane>
+                            <StackPane><Circle radius="30" fill="#0068ff"/><Label fx:id="infoAvatarLabel" text="Z" style="-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: white;"/></StackPane>
                             <Label fx:id="infoNameLabel" text="Hội thoại" style="-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #222;"/>
                             <Label fx:id="infoStatusLabel" text="Đang hoạt động" style="-fx-font-size: 12px; -fx-text-fill: #22c55e;"/>
                         </VBox>
-
                         <Separator/>
-
-                        <!-- Members Section (for group) -->
-                        <VBox fx:id="infoMembersBox" spacing="8">
-                            <Label text="THÀNH VIÊN" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #888;"/>
-                            <VBox fx:id="infoMembersList" spacing="6"/>
-                        </VBox>
-
-                        <!-- Media / Files Section -->
-                        <VBox spacing="8">
-                            <Label text="ẢNH &amp; VIDEO" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #888;"/>
-                            <VBox fx:id="infoMediaContainer" spacing="6">
-                                <Label text="Chưa có ảnh/video nào." style="-fx-font-size: 11px; -fx-text-fill: #aaa;"/>
-                            </VBox>
-                        </VBox>
-
-                        <VBox spacing="8">
-                            <Label text="FILE &amp; TÀI LIỆU" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #888;"/>
-                            <VBox fx:id="infoFilesContainer" spacing="6">
-                                <Label text="Chưa có tài liệu hoặc file nào." style="-fx-font-size: 11px; -fx-text-fill: #aaa;"/>
-                            </VBox>
-                        </VBox>
+                        <VBox fx:id="infoMembersBox" spacing="8"><Label text="THÀNH VIÊN" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #888;"/><VBox fx:id="infoMembersList" spacing="6"/></VBox>
+                        <VBox spacing="8"><Label text="ẢNH &amp; VIDEO" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #888;"/><VBox fx:id="infoMediaContainer" spacing="6"><Label text="Chưa có ảnh/video nào." style="-fx-font-size: 11px; -fx-text-fill: #aaa;"/></VBox></VBox>
+                        <VBox spacing="8"><Label text="FILE &amp; TÀI LIỆU" style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #888;"/><VBox fx:id="infoFilesContainer" spacing="6"><Label text="Chưa có tài liệu hoặc file nào." style="-fx-font-size: 11px; -fx-text-fill: #aaa;"/></VBox></VBox>
                     </VBox>
                 </ScrollPane>
             </VBox>
         </HBox>
 
-        <!-- ── TAB 2: CONTACTS VIEW (DANH BẠ) ── -->
+        <!-- TAB 2: CONTACTS VIEW -->
         <HBox fx:id="contactsViewContainer" HBox.hgrow="ALWAYS" visible="false" managed="false">
-            <!-- Contacts Left Sub-nav -->
-            <VBox minWidth="260" prefWidth="260" maxWidth="260"
-                  style="-fx-background-color: #ffffff; -fx-border-color: transparent #e8e8e8 transparent transparent; -fx-border-width: 0 1 0 0; -fx-padding: 12;">
+            <VBox minWidth="260" prefWidth="260" maxWidth="260" style="-fx-background-color: #ffffff; -fx-border-color: transparent #e8e8e8 transparent transparent; -fx-border-width: 0 1 0 0; -fx-padding: 12;">
                 <Label text="Danh bạ" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #111;"/>
                 <Region prefHeight="14"/>
-                <Button fx:id="subContactsFriendsBtn" text="👥  Danh sách bạn bè" onAction="#showFriendsList" maxWidth="Infinity" alignment="CENTER_LEFT"
-                        style="-fx-background-color: #e8f0fe; -fx-text-fill: #0068ff; -fx-font-weight: bold; -fx-padding: 10 12; -fx-background-radius: 8; -fx-cursor: hand;"/>
+                <Button fx:id="subContactsFriendsBtn" text="👥  Danh sách bạn bè" onAction="#showFriendsList" maxWidth="Infinity" alignment="CENTER_LEFT" style="-fx-background-color: #e8f0fe; -fx-text-fill: #0068ff; -fx-font-weight: bold; -fx-padding: 10 12; -fx-background-radius: 8; -fx-cursor: hand;"/>
                 <Region prefHeight="6"/>
-                <Button fx:id="subContactsGroupsBtn" text="👨‍👩‍👧‍👦  Danh sách nhóm" onAction="#showGroupsList" maxWidth="Infinity" alignment="CENTER_LEFT"
-                        style="-fx-background-color: transparent; -fx-text-fill: #444; -fx-padding: 10 12; -fx-background-radius: 8; -fx-cursor: hand;"/>
+                <Button fx:id="subContactsGroupsBtn" text="👨‍👩‍👧‍👦  Danh sách nhóm" onAction="#showGroupsList" maxWidth="Infinity" alignment="CENTER_LEFT" style="-fx-background-color: transparent; -fx-text-fill: #444; -fx-padding: 10 12; -fx-background-radius: 8; -fx-cursor: hand;"/>
                 <Region prefHeight="6"/>
-                <Button fx:id="subContactsRequestsBtn" text="📩  Lời mời kết bạn" onAction="#showRequestsList" maxWidth="Infinity" alignment="CENTER_LEFT"
-                        style="-fx-background-color: transparent; -fx-text-fill: #444; -fx-padding: 10 12; -fx-background-radius: 8; -fx-cursor: hand;"/>
+                <Button fx:id="subContactsRequestsBtn" text="📩  Lời mời kết bạn" onAction="#showRequestsList" maxWidth="Infinity" alignment="CENTER_LEFT" style="-fx-background-color: transparent; -fx-text-fill: #444; -fx-padding: 10 12; -fx-background-radius: 8; -fx-cursor: hand;"/>
             </VBox>
-
-            <!-- Contacts Main List -->
             <VBox HBox.hgrow="ALWAYS" style="-fx-background-color: #f9f9fb; -fx-padding: 20 28;">
                 <HBox alignment="CENTER_LEFT" spacing="12">
                     <Label text="Danh sách bạn bè" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #222;"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <HBox alignment="CENTER_LEFT" spacing="8" style="-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 20; -fx-background-radius: 20; -fx-padding: 6 14;">
                         <Label text="🔍" style="-fx-font-size: 12px; -fx-text-fill: #888;"/>
-                        <TextField fx:id="contactSearchField" promptText="Tìm bạn bè..." onAction="#handleFilterContacts"
-                                   style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 13px; -fx-padding: 0;"/>
+                        <TextField fx:id="contactSearchField" promptText="Tìm bạn bè..." onAction="#handleFilterContacts" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 13px; -fx-padding: 0;"/>
                     </HBox>
                     <Button text="+ Thêm bạn mới" onAction="#searchPhoneAndAddFriend" styleClass="button-primary"/>
                 </HBox>
-
                 <Region prefHeight="16"/>
-
-                <ListView fx:id="contactsListView" VBox.vgrow="ALWAYS"
-                          style="-fx-background-color: white; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8;"/>
+                <ListView fx:id="contactsListView" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8;"/>
             </VBox>
         </HBox>
 
-        <!-- ── TAB 3: TO-DO VIEW (GIAO VIỆC) ── -->
-        <VBox fx:id="todoViewContainer" HBox.hgrow="ALWAYS" visible="false" managed="false"
-              style="-fx-background-color: #f9fafb; -fx-padding: 24 32;">
-            <HBox alignment="CENTER_LEFT" spacing="12">
-                <Label text="Quản lý công việc (To-do)" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #111;"/>
-                <Region HBox.hgrow="ALWAYS"/>
-                <Button text="+ Việc cần làm mới" onAction="#handleCreateTodo" styleClass="button-primary"/>
-            </HBox>
+        <!-- TAB 3: TO-DO VIEW -->
+        <VBox fx:id="todoViewContainer" HBox.hgrow="ALWAYS" visible="false" managed="false" style="-fx-background-color: #f9fafb; -fx-padding: 24 32;">
+            <HBox alignment="CENTER_LEFT" spacing="12"><Label text="Quản lý công việc (To-do)" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #111;"/><Region HBox.hgrow="ALWAYS"/><Button text="+ Việc cần làm mới" onAction="#handleCreateTodo" styleClass="button-primary"/></HBox>
             <Region prefHeight="14"/>
-            <!-- Filter Bar -->
-            <HBox spacing="8">
-                <Button text="Tất cả việc" styleClass="filter-chip"/>
-                <Button text="Tôi giao" styleClass="filter-chip"/>
-                <Button text="Cần làm" styleClass="filter-chip"/>
-                <Button text="Đã hoàn thành" styleClass="filter-chip"/>
-            </HBox>
+            <HBox spacing="8"><Button text="Tất cả việc" styleClass="filter-chip"/><Button text="Tôi giao" styleClass="filter-chip"/><Button text="Cần làm" styleClass="filter-chip"/><Button text="Đã hoàn thành" styleClass="filter-chip"/></HBox>
             <Region prefHeight="18"/>
-            <!-- Quick Add Bar -->
             <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-background-color: white; -fx-padding: 10 14; -fx-background-radius: 8; -fx-border-color: #e5e7eb; -fx-border-radius: 8;">
-                <TextField fx:id="newTodoField" promptText="Nhập công việc cần làm và nhấn Enter..." onAction="#handleCreateTodo"
-                           style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 14px;" HBox.hgrow="ALWAYS"/>
+                <TextField fx:id="newTodoField" promptText="Nhập công việc cần làm và nhấn Enter..." onAction="#handleCreateTodo" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 14px;" HBox.hgrow="ALWAYS"/>
                 <Button text="Thêm việc" onAction="#handleCreateTodo" styleClass="button-primary" style="-fx-padding: 6 16;"/>
             </HBox>
             <Region prefHeight="16"/>
-            <!-- Todo List -->
-            <ListView fx:id="todoListView" VBox.vgrow="ALWAYS"
-                      style="-fx-background-color: white; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8;"/>
+            <ListView fx:id="todoListView" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8;"/>
         </VBox>
 
-        <!-- ── TAB 4: MY CLOUD VIEW (CLOUD CỦA TÔI) ── -->
-        <VBox fx:id="cloudViewContainer" HBox.hgrow="ALWAYS" visible="false" managed="false"
-              style="-fx-background-color: #f9fafb; -fx-padding: 24 32;">
+        <!-- TAB 4: CLOUD VIEW -->
+        <VBox fx:id="cloudViewContainer" HBox.hgrow="ALWAYS" visible="false" managed="false" style="-fx-background-color: #f9fafb; -fx-padding: 24 32;">
             <HBox alignment="CENTER_LEFT" spacing="12">
-                <StackPane>
-                    <Circle radius="22" fill="#0068ff"/>
-                    <Label text="☁" style="-fx-font-size: 20px; -fx-text-fill: white;"/>
-                </StackPane>
-                <VBox>
-                    <Label text="Cloud của tôi" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #111;"/>
-                    <Label text="Lưu trữ tin nhắn, ảnh và tài liệu cá nhân giữa các thiết bị" style="-fx-font-size: 13px; -fx-text-fill: #666;"/>
-                </VBox>
+                <StackPane><Circle radius="22" fill="#0068ff"/><Label text="☁" style="-fx-font-size: 20px; -fx-text-fill: white;"/></StackPane>
+                <VBox><Label text="Cloud của tôi" style="-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #111;"/><Label text="Lưu trữ tin nhắn, ảnh và tài liệu cá nhân giữa các thiết bị" style="-fx-font-size: 13px; -fx-text-fill: #666;"/></VBox>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Button text="Tải file lên Cloud" onAction="#handleUploadCloud" styleClass="button-primary"/>
             </HBox>
             <Region prefHeight="18"/>
-            <!-- Cloud Quick Note & Upload -->
             <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-background-color: white; -fx-padding: 12 16; -fx-background-radius: 8; -fx-border-color: #e5e7eb; -fx-border-radius: 8;">
-                <TextField fx:id="cloudNoteField" promptText="Lưu ghi chú nhanh vào Cloud của bạn..." onAction="#handleSaveCloudNote"
-                           style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 14px;" HBox.hgrow="ALWAYS"/>
+                <TextField fx:id="cloudNoteField" promptText="Lưu ghi chú nhanh vào Cloud của bạn..." onAction="#handleSaveCloudNote" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 14px;" HBox.hgrow="ALWAYS"/>
                 <Button text="Lưu ghi chú" onAction="#handleSaveCloudNote" styleClass="button-primary"/>
             </HBox>
             <Region prefHeight="16"/>
-            <ListView fx:id="cloudListView" VBox.vgrow="ALWAYS"
-                      style="-fx-background-color: white; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8;"/>
+            <ListView fx:id="cloudListView" VBox.vgrow="ALWAYS" style="-fx-background-color: white; -fx-border-color: #e5e7eb; -fx-border-radius: 8; -fx-background-radius: 8;"/>
         </VBox>
-
     </StackPane>
 </HBox>

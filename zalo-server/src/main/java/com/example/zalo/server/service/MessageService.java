@@ -79,7 +79,7 @@ public final class MessageService {
         if (beforeId > 0 && afterId > 0) {
             throw new IllegalArgumentException("Only one history cursor may be supplied");
         }
-        int limit = Math.clamp(requestedLimit, 1, 100);
+        int limit = Math.max(1, Math.min(requestedLimit, 100));
         List<MessageDto> rowsWithSentinel = messageRepository.findPage(conversationId, beforeId, afterId, limit);
         boolean hasMore = rowsWithSentinel.size() > limit;
         List<MessageDto> messages = new ArrayList<>(hasMore ? rowsWithSentinel.subList(0, limit) : rowsWithSentinel);

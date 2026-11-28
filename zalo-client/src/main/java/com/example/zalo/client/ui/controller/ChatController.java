@@ -88,7 +88,7 @@ public final class ChatController {
         if (activeConversation == null || visibleMessages.isEmpty()) {
             return;
         }
-        long beforeId = visibleMessages.getFirst().id();
+        long beforeId = visibleMessages.get(0).id();
         loadOlderButton.setDisable(true);
         chatClient.requestHistory(activeConversation.id(), beforeId, 0, 50).whenComplete((page, error) -> UiThread.run(() -> {
             if (activeConversation == null || error != null) {
